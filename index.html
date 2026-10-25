@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0E1113">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>html{color-scheme:light dark}body{margin:0}</style>
+<title>סטודיו המברשות</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&family=Secular+One&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one-screen studio. Brush rail beside the canvas (strip under it on phones), tool bar on top. */
+:root{
+  --bg:#EDF0F2; --panel:#F7F8F9; --fg:#14181C; --muted:#5A6570; --line:#D3D9DF;
+  --accent:#0B7A78; --accent-fg:#FFFFFF; --accent-soft:#D5ECEA; --danger:#B42318;
+  --paper-light:#FFFFFF; --paper-dark:#1C1F24;
+  --f-ui:'Heebo',system-ui,sans-serif; --f-display:'Secular One','Heebo',system-ui,sans-serif; --f-mono:'DM Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1113; --panel:#171B1E; --fg:#E7ECEF; --muted:#8D99A2; --line:#2B3338;
+    --accent:#3FC8C2; --accent-fg:#06201F; --accent-soft:#12302F; --danger:#F97066; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1113; --panel:#171B1E; --fg:#E7ECEF; --muted:#8D99A2; --line:#2B3338;
+  --accent:#3FC8C2; --accent-fg:#06201F; --accent-soft:#12302F; --danger:#F97066; color-scheme:dark;
+}
+html{box-sizing:border-box;height:100%;overscroll-behavior:none}
+body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:var(--f-ui);font-size:14px;overscroll-behavior:none;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));-webkit-tap-highlight-color:transparent}
+*,*::before,*::after{box-sizing:border-box}
+#app{height:100%}
+#app[data-paper="light"]{--paper-cur:var(--paper-light)}
+#app[data-paper="dark"]{--paper-cur:var(--paper-dark)}
+
+h1{font:400 21px/1 var(--f-display);margin:0;letter-spacing:.01em;text-wrap:balance}
+h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 0 10px}
+.grp{display:flex;align-items:center;gap:6px}
+.btn{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--fg);font:500 13px var(--f-ui);
+  min-height:44px;min-width:44px;padding:0 12px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.btn.warn{border-color:var(--danger);color:var(--danger)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.colors{flex-wrap:wrap;max-width:100%}
+#color{width:44px;height:44px;padding:0;border:1px solid var(--line);border-radius:10px;background:var(--panel);cursor:pointer}
+.sw{display:flex;flex-wrap:wrap;gap:6px}
+.sw button{width:30px;height:30px;border-radius:50%;border:2px solid var(--panel);box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0}
+.sw button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--accent)}
+
+.ctl{display:grid;grid-template-columns:64px minmax(0,1fr) 40px;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.ctl input[type=range]{width:100%;accent-color:var(--accent);min-height:44px}
+.ctl output{font:500 12px var(--f-mono);min-width:3ch;color:var(--fg);font-variant-numeric:tabular-nums;text-align:end}
+.ctl select{grid-column:2 / 4;min-height:44px;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:10px;padding:0 10px;font:inherit}
+.chk{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);min-height:44px}
+.chk input{width:20px;height:20px;accent-color:var(--accent)}
+.stat{font:400 12px var(--f-mono);color:var(--muted);padding:8px 10px;border:1px dashed var(--line);border-radius:8px;min-width:0}
+
+.brushes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.brush{appearance:none;display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:6px;border:1px solid var(--line);border-radius:10px;
+  background:transparent;color:var(--fg);font:500 12px var(--f-ui);cursor:pointer;min-width:0}
+.brush[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.pv{width:100%;height:40px;border-radius:6px;background:var(--paper-cur);display:block}
+.brush span{text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.stage{position:fixed;inset:0;overflow:hidden;background:var(--paper-cur);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:crosshair}
+.stage canvas{position:absolute;top:0;left:0;display:block}
+#live{pointer-events:none}
+.hint{position:absolute;inset-inline-start:16px;bottom:calc(14px + env(safe-area-inset-bottom, 0px));max-width:calc(100% - 32px);padding:8px 12px;border-radius:8px;background:var(--panel);color:var(--muted);
+  border:1px solid var(--line);font-size:12px;pointer-events:none;text-wrap:balance}
+
+.sheet{position:fixed;inset:0;z-index:20;background:rgba(10,12,14,.66);display:flex;align-items:center;justify-content:center;padding:16px}
+.card{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:14px;padding:14px;max-width:min(560px,100%);max-height:100%;display:flex;flex-direction:column;gap:10px;overflow:auto}
+.card img{max-width:100%;max-height:60vh;object-fit:contain;border-radius:8px;border:1px solid var(--line);background:#fff;-webkit-touch-callout:default;user-select:auto;-webkit-user-select:auto}
+.card p{margin:0;font-size:13px;color:var(--muted);text-wrap:balance}
+.card .row{display:flex;gap:8px;flex-wrap:wrap}
+
+/* floating quick tools + side drawer */
+.fab{position:fixed;z-index:10;top:calc(env(safe-area-inset-top, 0px) + 10px);inset-inline-start:max(16px, env(safe-area-inset-right, 0px));
+  display:flex;gap:6px;padding:6px;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+.fab .btn{position:relative}
+.dot{position:absolute;inset-inline-end:4px;bottom:4px;width:13px;height:13px;border-radius:50%;border:2px solid var(--panel);box-shadow:0 0 0 1px var(--line);background:#14181c}
+.drawer{position:fixed;z-index:15;top:0;bottom:0;inset-inline-start:0;width:min(360px,88vw);overflow-y:auto;overscroll-behavior:contain;
+  background:var(--panel);border-inline-end:1px solid var(--line);box-shadow:-8px 0 28px rgba(0,0,0,.28);
+  padding:calc(env(safe-area-inset-top, 0px) + 12px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 24px) 16px;
+  display:flex;flex-direction:column;gap:22px;transform:translateX(105%);visibility:hidden;transition:transform .22s ease,visibility 0s .22s}
+.drawer.open{transform:none;visibility:visible;transition:transform .22s ease}
+.dhead{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.drawer section{min-width:0}
+.stack{display:flex;flex-direction:column;gap:2px}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+</head>
+<body>
+<div id="app" data-paper="light" dir="rtl" lang="he">
+  <main class="stage" id="stage">
+    <canvas id="main"></canvas>
+    <canvas id="live"></canvas>
+    <div class="hint" id="hint">זו דוגמה לניסוי. פתחו את האפשרויות מהכפתור למעלה, ו"נקה" פותח דף חלק.</div>
+  </main>
+
+  <div class="fab" role="group" aria-label="כלים מהירים">
+    <button class="btn" id="menu" aria-label="אפשרויות" aria-expanded="false" aria-controls="drawer" title="אפשרויות"><svg viewBox="0 0 24 24"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg><span class="dot" id="dot"></span></button>
+    <button class="btn" id="undo" aria-label="בטל" title="בטל (Ctrl+Z)" disabled><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
+    <button class="btn" id="redo" aria-label="החזר" title="החזר (Ctrl+Shift+Z)" disabled><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
+  </div>
+
+  <aside class="drawer" id="drawer" aria-label="אפשרויות ציור">
+    <div class="dhead">
+      <h1>סטודיו המברשות</h1>
+      <button class="btn" id="dclose" aria-label="סגור אפשרויות"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <section><h2>מברשות</h2><nav class="brushes" id="brushes" aria-label="מברשות"></nav></section>
+    <section><h2>צבע</h2>
+      <div class="grp colors" role="group" aria-label="צבע">
+        <input type="color" id="color" value="#14181c" aria-label="צבע מותאם אישית">
+        <div class="sw" id="sw"></div>
+      </div>
+    </section>
+    <section><h2>קו</h2>
+      <div class="stack">
+        <label class="ctl" for="size"><span>גודל</span><input id="size" type="range" min="1" max="120" value="6"><output id="sizeOut">6</output></label>
+        <label class="ctl" for="opac"><span>אטימות</span><input id="opac" type="range" min="5" max="100" value="100"><output id="opacOut">100</output></label>
+        <label class="ctl" for="smooth"><span>החלקה</span><input id="smooth" type="range" min="0" max="90" value="30"><output id="smoothOut">30</output></label>
+      </div>
+    </section>
+    <section><h2>עט ומגע</h2>
+      <div class="stack">
+        <label class="ctl" for="pmode"><span>לחץ</span>
+          <select id="pmode">
+            <option value="auto">אוטומטי</option>
+            <option value="sim">לפי מהירות</option>
+            <option value="real">לחץ מהעט</option>
+            <option value="off">קבוע</option>
+          </select>
+        </label>
+        <label class="chk" for="palm"><input type="checkbox" id="palm" checked> דחיית כף יד</label>
+      </div>
+      <div class="stat" id="stat" aria-live="off">ממתין לעט או לאצבע</div>
+    </section>
+    <section><h2>דף</h2>
+      <div class="actions" role="group" aria-label="דף">
+        <button class="btn" id="paper" title="רקע בהיר / כהה"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor"/></svg>רקע</button>
+        <button class="btn" id="clear" title="דף חלק"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg><span id="clearTxt">נקה</span></button>
+        <button class="btn" id="save" title="שמירה כתמונה"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 9"/></svg>שמור</button>
+      </div>
+    </section>
+  </aside>
+
+  <div class="sheet" id="upd" hidden><div class="card" role="dialog" aria-label="עדכון"><p id="updMsg">יש גרסה חדשה של האפליקציה.</p><div class="row"><button class="btn" id="updGo">עדכן עכשיו</button><button class="btn" id="updLater">אחר כך</button></div></div></div>
+
+  <div class="sheet" id="sheet" hidden>
+    <div class="card" role="dialog" aria-label="שמירת הציור">
+      <img id="out" alt="הציור שלכם">
+      <p id="sheetMsg">לחיצה ארוכה על התמונה ואז "שמור תמונה" שומרת אותה בגלריה.</p>
+      <div class="row">
+        <button class="btn" id="copy">העתק תמונה</button>
+        <button class="btn" id="close">סגור</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const $=s=>document.querySelector(s);
+const R=Math.random, TAU=Math.PI*2;
+const DPR=Math.min(2,window.devicePixelRatio||1);
+const PALM=44; // css px; contacts wider than this are treated as a palm
+
+/* ---------- colour helpers ---------- */
+const hex2rgb=h=>{h=h.replace('#','');if(h.length===3)h=[...h].map(c=>c+c).join('');const n=parseInt(h,16);return [(n>>16)&255,(n>>8)&255,n&255];};
+const css=(r,g,b,a=1)=>`rgba(${r|0},${g|0},${b|0},${a})`;
+const shade=(rgb,amt)=>rgb.map(v=>Math.max(0,Math.min(255,v+amt*255)));
+const mix=(rgb,w)=>rgb.map(v=>v+(255-v)*w);
+function hueOf([r,g,b]){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;if(!d)return 0;let h=mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4;return (h*60+360)%360;}
+const paint=hex=>{const rgb=hex2rgb(hex);return {color:hex,rgb,hue:hueOf(rgb)};};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+/* ---------- brushes ----------
+   sp: dab spacing as a fraction of size, mul: size multiplier, layered: stroke drawn on a
+   private layer so opacity does not build up inside one stroke, cb: blend used on commit. */
+const BR=[
+ {id:'pencil',name:'עיפרון',size:4,pv:6,sp:.12,
+  dab(c,p){const r=p.s*.5*(.5+.5*p.pr),n=Math.ceil(r*2.4+2);c.fillStyle=p.color;
+    for(let i=0;i<n;i++){const a=R()*TAU,d=Math.sqrt(R())*r;c.globalAlpha=p.base*(.25+R()*.5)*(.5+.6*p.pr);c.fillRect(p.x+Math.cos(a)*d,p.y+Math.sin(a)*d,1.1,1.1);}}},
+ {id:'ballpoint',name:'עט כדורי',size:4,pv:5,sp:.08,layered:true,
+  dab(c,p){c.fillStyle=p.color;c.beginPath();c.arc(p.x,p.y,Math.max(.5,p.s*.5*(.7+.3*p.pr)),0,TAU);c.fill();}},
+ {id:'ink',name:'דיו',size:14,pv:12,sp:.06,layered:true,
+  dab(c,p){c.fillStyle=p.color;c.beginPath();c.arc(p.x,p.y,Math.max(.4,p.s*.5*(.18+.95*Math.pow(p.pr,1.3))),0,TAU);c.fill();}},
+ {id:'marker',name:'טוש',size:16,pv:12,sp:.08,layered:true,alpha:.9,
+  dab(c,p){c.fillStyle=p.color;c.beginPath();c.arc(p.x,p.y,p.s*.5*(.9+.1*p.pr),0,TAU);c.fill();}},
+ {id:'highlighter',name:'מדגיש',size:16,pv:12,sp:.06,mul:2.4,layered:true,alpha:.55,cb:'multiply',
+  dab(c,p){c.fillStyle=p.color;c.fillRect(p.x-p.s*.2,p.y-p.s*.5,p.s*.4,p.s);}},
+ {id:'calligraphy',name:'קליגרפיה',size:18,pv:16,sp:.05,layered:true,
+  dab(c,p){c.fillStyle=p.color;c.beginPath();c.ellipse(p.x,p.y,Math.max(.8,p.s*.5*(.6+.4*p.pr)),Math.max(.6,p.s*.1),-.7,0,TAU);c.fill();}},
+ {id:'oil',name:'שמן',size:40,pv:20,sp:.1,
+  init(s){const a=[];for(let i=0;i<18;i++){const t=R()*TAU,d=Math.sqrt(R())*.5;a.push({ox:Math.cos(t)*d,oy:Math.sin(t)*d,r:.045+R()*.06,col:css(...shade(s.rgb,(R()-.5)*.3)),a:.55+R()*.4});}return a;},
+  dab(c,p,rs){const k=.5+.5*p.pr;for(const b of rs){c.globalAlpha=p.base*b.a;c.fillStyle=b.col;c.beginPath();c.arc(p.x+b.ox*p.s*k,p.y+b.oy*p.s*k,Math.max(.6,b.r*p.s),0,TAU);c.fill();}}},
+ {id:'watercolor',name:'צבעי מים',size:44,pv:22,sp:.15,pad:1.4,
+  dab(c,p){const r=p.s*.6*(.6+.5*p.pr);c.fillStyle=p.color;c.strokeStyle=p.color;
+    for(let k=0;k<2;k++){c.globalAlpha=p.base*.05;c.beginPath();c.arc(p.x+(R()-.5)*r*.5,p.y+(R()-.5)*r*.5,r*(.8+R()*.4),0,TAU);c.fill();}
+    c.globalAlpha=p.base*.025;c.lineWidth=1;c.beginPath();c.arc(p.x,p.y,r,0,TAU);c.stroke();}},
+ {id:'airbrush',name:'אירבראש',size:50,pv:22,sp:.12,pad:1.1,
+  dab(c,p){const r=p.s*.9,g=c.createRadialGradient(p.x,p.y,0,p.x,p.y,r),a=p.base*.12*(.4+.8*p.pr);
+    g.addColorStop(0,css(...p.rgb,a));g.addColorStop(1,css(...p.rgb,0));c.globalAlpha=1;c.fillStyle=g;c.beginPath();c.arc(p.x,p.y,r,0,TAU);c.fill();}},
+ {id:'spray',name:'ספריי',size:50,pv:20,sp:.2,pad:1,
+  dab(c,p){const n=Math.ceil(p.s*1.6*(.5+p.pr)),r=p.s*.7;c.fillStyle=p.color;c.globalAlpha=p.base*.85;
+    for(let i=0;i<n;i++){const a=R()*TAU,d=r*R()*Math.sqrt(R());c.beginPath();c.arc(p.x+Math.cos(a)*d,p.y+Math.sin(a)*d,.5+R()*.9,0,TAU);c.fill();}}},
+ {id:'charcoal',name:'פחם',size:24,pv:16,sp:.12,
+  dab(c,p){const n=Math.ceil(p.s*.9*(.4+p.pr)),r=p.s*.5;c.fillStyle=p.color;
+    c.globalAlpha=p.base*.02;c.beginPath();c.arc(p.x,p.y,r,0,TAU);c.fill();
+    for(let i=0;i<n;i++){const a=R()*TAU,d=Math.sqrt(R())*r;c.globalAlpha=p.base*(.08+R()*.4);c.fillRect(p.x+Math.cos(a)*d,p.y+Math.sin(a)*d,.6+R()*2.4,.6+R()*2.4);}}},
+ {id:'crayon',name:'צבע שעווה',size:20,pv:14,sp:.15,
+  dab(c,p){const n=Math.ceil(p.s*1.2),r=p.s*.5*(.6+.4*p.pr);c.fillStyle=p.color;
+    for(let i=0;i<n;i++){if(R()<(1-p.pr)*.5)continue;const a=R()*TAU,d=Math.sqrt(R())*r;c.globalAlpha=p.base*(.5+R()*.4);c.fillRect(p.x+Math.cos(a)*d,p.y+Math.sin(a)*d,1.5+R()*2,1.5+R()*2);}}},
+ {id:'neon',name:'ניאון',size:12,pv:8,sp:.15,pad:3,
+  dab(c,p){const k=.6+.4*p.pr;c.save();c.shadowColor=p.color;c.shadowBlur=p.s*1.1*DPR;c.globalAlpha=p.base;c.fillStyle=p.color;
+    c.beginPath();c.arc(p.x,p.y,p.s*.28*k,0,TAU);c.fill();c.restore();
+    c.globalAlpha=p.base;c.fillStyle=css(...mix(p.rgb,.8));c.beginPath();c.arc(p.x,p.y,Math.max(.6,p.s*.14*k),0,TAU);c.fill();}},
+ {id:'dots',name:'נקודות',size:14,pv:8,sp:1.4,
+  dab(c,p){c.globalAlpha=p.base;c.fillStyle=p.color;c.beginPath();c.arc(p.x,p.y,Math.max(.6,p.s*.5*(.5+.5*p.pr)),0,TAU);c.fill();}},
+ {id:'confetti',name:'קונפטי',size:36,pv:14,sp:1.1,pad:1,
+  dab(c,p){c.save();c.translate(p.x,p.y);c.rotate(R()*TAU);c.globalAlpha=p.base;c.fillStyle=`hsl(${p.hue+R()*160-80},80%,55%)`;
+    const k=p.s*.5*(.5+.5*R()),t=R();c.beginPath();
+    if(t<.4){for(let i=0;i<10;i++){const r=i%2?k*.45:k,a=i*Math.PI/5-Math.PI/2;c.lineTo(Math.cos(a)*r,Math.sin(a)*r);}c.closePath();}
+    else if(t<.7){c.rect(-k,-k*.5,k*2,k);}else{c.arc(0,0,k*.6,0,TAU);}
+    c.fill();c.restore();}},
+ {id:'eraser',name:'מחק',size:30,pv:10,sp:.1,erase:true,
+  dab(c,p){c.globalAlpha=p.base;c.fillStyle='#000';c.beginPath();c.arc(p.x,p.y,p.s*.5,0,TAU);c.fill();}}
+];
+
+/* ---------- stroke engine ---------- */
+class Stroke{
+  constructor(b,ctx,s){this.b=b;this.c=ctx;this.s=s;this.last=null;this.sx=0;this.sy=0;this.carry=0;this.box=[1e9,1e9,-1e9,-1e9];
+    this.rs=b.init?b.init(s):null;if(b.erase)ctx.globalCompositeOperation='destination-out';}
+  space(){const b=this.b;return Math.max(.7,b.sp*this.s.size*(b.mul||1));}
+  dab(x,y,pr,ang){
+    const b=this.b,s=this.s,p={x,y,pr,ang,s:s.size*(b.mul||1),base:b.layered?1:s.opacity,color:s.color,rgb:s.rgb,hue:s.hue};
+    b.dab(this.c,p,this.rs);
+    const m=p.s*(b.pad||1.2)+4,bx=this.box;
+    bx[0]=Math.min(bx[0],x-m);bx[1]=Math.min(bx[1],y-m);bx[2]=Math.max(bx[2],x+m);bx[3]=Math.max(bx[3],y+m);
+  }
+  add(x,y,pr){
+    if(!this.last){this.sx=x;this.sy=y;this.last={x,y,pr};this.dab(x,y,pr,0);this.carry=this.space();return;}
+    const k=this.s.smooth==null?1:this.s.smooth;this.sx+=(x-this.sx)*k;this.sy+=(y-this.sy)*k;
+    const L=this.last,dx=this.sx-L.x,dy=this.sy-L.y,dist=Math.hypot(dx,dy);if(dist<.3)return;
+    const ang=Math.atan2(dy,dx);let d=this.carry;
+    while(d<=dist){const t=d/dist;this.dab(L.x+dx*t,L.y+dy*t,L.pr+(pr-L.pr)*t,ang);d+=this.space();}
+    this.carry=d-dist;this.last={x:this.sx,y:this.sy,pr};
+  }
+  finish(x,y,pr){for(let i=0;i<5;i++)this.add(x,y,pr);const c=this.c;c.globalCompositeOperation='source-over';c.globalAlpha=1;return this.box;}
+}
+function paintStroke(dst,b,s,pts){
+  let target=dst,tmp=null;
+  if(b.layered){tmp=document.createElement('canvas');tmp.width=dst.canvas.width;tmp.height=dst.canvas.height;target=tmp.getContext('2d');target.setTransform(DPR,0,0,DPR,0,0);}
+  const sk=new Stroke(b,target,s);for(const q of pts)sk.add(q[0],q[1],q[2]);
+  const last=pts[pts.length-1];sk.finish(last[0],last[1],last[2]);
+  if(tmp){dst.save();dst.setTransform(1,0,0,1,0,0);dst.globalAlpha=s.opacity*(b.alpha||1);dst.globalCompositeOperation=b.cb||'source-over';dst.drawImage(tmp,0,0);dst.restore();}
+}
+function path(fn,n,prf){const a=[];for(let i=0;i<=n;i++){const t=i/n,q=fn(t);a.push([q[0],q[1],prf?prf(t):.35+.65*Math.sin(Math.PI*t)]);}return a;}
+
+/* ---------- canvases ---------- */
+const stage=$('#stage'),main=$('#main'),live=$('#live'),app=$('#app');
+const mctx=main.getContext('2d'),lctx=live.getContext('2d');
+const shadow=document.createElement('canvas'),sctx=shadow.getContext('2d',{willReadFrequently:true});
+let W=0,H=0,demoDone=false;
+function fit(){
+  const r=stage.getBoundingClientRect();
+  const nw=Math.max(W,Math.ceil(r.width)),nh=Math.max(H,Math.ceil(r.height));
+  if(nw<=0||nh<=0||(nw===W&&nh===H))return;
+  const pw=Math.round(nw*DPR),ph=Math.round(nh*DPR);
+  for(const c of [main,shadow]){
+    let tmp=null;
+    if(c.width>0&&c.height>0){tmp=document.createElement('canvas');tmp.width=c.width;tmp.height=c.height;tmp.getContext('2d').drawImage(c,0,0);}
+    c.width=pw;c.height=ph;if(tmp)c.getContext('2d').drawImage(tmp,0,0);
+  }
+  live.width=pw;live.height=ph;
+  main.style.width=live.style.width=nw+'px';main.style.height=live.style.height=nh+'px';
+  W=nw;H=nh;mctx.setTransform(DPR,0,0,DPR,0,0);lctx.setTransform(DPR,0,0,DPR,0,0);
+  if(!demoDone){demoDone=true;demo();}
+}
+new ResizeObserver(fit).observe(stage);
+
+/* ---------- state & UI ---------- */
+const st={...paint('#14181c'),opacity:1,smooth:.7,size:6,pmode:'auto',palm:true};
+let cur=BR[0];
+st.size=cur.size;
+const COLORS=[['#14181c','שחור'],['#e5484d','אדום'],['#f76b15','כתום'],['#ffc53d','צהוב'],['#30a46c','ירוק'],['#12a594','טורקיז'],['#0090ff','כחול'],['#6e56cf','סגול'],['#e93d82','ורוד'],['#7d5a3c','חום'],['#ffffff','לבן']];
+const swEl=$('#sw');
+COLORS.forEach(([hex,name])=>{const b=document.createElement('button');b.type='button';b.style.background=hex;b.setAttribute('aria-label',name);b.dataset.hex=hex;b.setAttribute('aria-pressed',hex===st.color?'true':'false');
+  b.addEventListener('click',()=>setColor(hex));swEl.appendChild(b);});
+function setColor(hex){Object.assign(st,paint(hex));$('#dot').style.background=hex;$('#color').value=hex;swEl.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.hex===hex?'true':'false'));queuePreviews();}
+$('#color').addEventListener('input',e=>setColor(e.target.value));
+
+const brEl=$('#brushes');
+BR.forEach(b=>{const el=document.createElement('button');el.type='button';el.className='brush';el.dataset.id=b.id;el.setAttribute('aria-pressed',b===cur?'true':'false');
+  el.innerHTML='<canvas class="pv"></canvas><span></span>';el.querySelector('span').textContent=b.name;
+  el.addEventListener('click',()=>selectBrush(b));brEl.appendChild(el);b.el=el;});
+function selectBrush(b){cur=b;BR.forEach(x=>x.el.setAttribute('aria-pressed',x===b?'true':'false'));st.size=b.size;$('#size').value=b.size;$('#sizeOut').textContent=b.size;}
+
+let pvQ=0;function queuePreviews(){if(pvQ)return;pvQ=requestAnimationFrame(()=>{pvQ=0;renderPreviews();});}
+function renderPreviews(){
+  const w=100,h=40,pts=path(t=>[8+t*84,20+Math.sin(t*TAU)*9],40,t=>.35+.65*Math.sin(Math.PI*t));
+  for(const b of BR){
+    const cv=b.el.querySelector('canvas');cv.width=w*DPR;cv.height=h*DPR;
+    const c=cv.getContext('2d');c.setTransform(DPR,0,0,DPR,0,0);
+    if(b.erase){c.strokeStyle=getComputedStyle(app).getPropertyValue('--muted').trim()||'#888';c.lineWidth=2;c.beginPath();c.arc(w/2,h/2,11,0,TAU);c.stroke();continue;}
+    paintStroke(c,b,{...st,size:b.pv,opacity:1,smooth:1},pts);
+  }
+}
+
+const bind=(id,fn)=>{const el=$('#'+id);el.addEventListener('input',()=>{fn(+el.value);$('#'+id+'Out').textContent=el.value;});};
+bind('size',v=>{st.size=v;cur.size=v;});
+bind('opac',v=>{st.opacity=v/100;});
+bind('smooth',v=>{st.smooth=1-v/100*.85;});
+$('#pmode').addEventListener('change',e=>{st.pmode=e.target.value;});
+$('#palm').addEventListener('change',e=>{st.palm=e.target.checked;});
+
+/* ---------- options drawer ---------- */
+const drawer=$('#drawer'),menu=$('#menu');let drawerOpen=false;
+function setDrawer(o){drawerOpen=o;drawer.classList.toggle('open',o);menu.setAttribute('aria-expanded',o?'true':'false');drawer.inert=!o;}
+menu.addEventListener('click',()=>setDrawer(!drawerOpen));
+$('#dclose').addEventListener('click',()=>setDrawer(false));
+addEventListener('keydown',e=>{if(e.key==='Escape')setDrawer(false);});
+setDrawer(false);
+$('#paper').addEventListener('click',()=>{app.dataset.paper=app.dataset.paper==='light'?'dark':'light';queuePreviews();});
+
+/* ---------- history (bounding-box patches) ---------- */
+const hist=[];let hi=0;
+const undoBtn=$('#undo'),redoBtn=$('#redo');
+function syncBtns(){undoBtn.disabled=hi<=0;redoBtn.disabled=hi>=hist.length;}
+function commitPatch(box){
+  const x=Math.max(0,Math.floor(box[0]*DPR)),y=Math.max(0,Math.floor(box[1]*DPR));
+  const x1=Math.min(main.width,Math.ceil(box[2]*DPR)),y1=Math.min(main.height,Math.ceil(box[3]*DPR));
+  const w=x1-x,h=y1-y;if(w<=0||h<=0)return;
+  const before=sctx.getImageData(x,y,w,h),after=mctx.getImageData(x,y,w,h);
+  sctx.putImageData(after,x,y);
+  hist.length=hi;hist.push({x,y,before,after});if(hist.length>60)hist.shift();hi=hist.length;syncBtns();
+}
+function undo(){if(hi<=0)return;const e=hist[--hi];mctx.putImageData(e.before,e.x,e.y);sctx.putImageData(e.before,e.x,e.y);syncBtns();}
+function redo(){if(hi>=hist.length)return;const e=hist[hi++];mctx.putImageData(e.after,e.x,e.y);sctx.putImageData(e.after,e.x,e.y);syncBtns();}
+undoBtn.addEventListener('click',undo);redoBtn.addEventListener('click',redo);
+addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();}});
+
+let clearTimer=0;const clearBtn=$('#clear'),clearTxt=$('#clearTxt');
+clearBtn.addEventListener('click',()=>{
+  if(!clearTimer){clearTxt.textContent='לחצו שוב';clearBtn.classList.add('warn');clearTimer=setTimeout(resetClear,2500);return;}
+  resetClear();mctx.clearRect(0,0,W,H);commitPatch([0,0,W,H]);hideHint();
+});
+function resetClear(){clearTimeout(clearTimer);clearTimer=0;clearTxt.textContent='נקה';clearBtn.classList.remove('warn');}
+const hint=$('#hint');function hideHint(){hint.hidden=true;}
+
+/* ---------- drawing input ---------- */
+let act=null,lastPen=0,seenReal=false,lastStat=0;
+const PT={pen:'עט',touch:'מגע / עט קיבולי',mouse:'עכבר'};
+function pressure(ev,a){
+  const m=st.pmode;
+  if(ev.pointerType==='pen'&&ev.pressure>0&&ev.pressure!==.5)seenReal=true;
+  let pr,src;
+  if(m==='off'){pr=.7;src='קבוע';}
+  else if(m==='real'||(m==='auto'&&seenReal&&ev.pointerType==='pen')){pr=ev.pressure||.5;src='ממשי';}
+  else{const target=clamp(1.1-a.v*.75,.28,1);a.sim=a.sim*.85+target*.15;pr=a.sim;src='לפי מהירות';}
+  const now=performance.now();
+  if(now-lastStat>100){lastStat=now;$('#stat').textContent=`${PT[ev.pointerType]||ev.pointerType} · לחץ ${pr.toFixed(2)} · ${src}`;}
+  return pr;
+}
+function pos(ev){const r=main.getBoundingClientRect();return [ev.clientX-r.left,ev.clientY-r.top];}
+
+stage.addEventListener('contextmenu',e=>e.preventDefault());
+stage.addEventListener('pointerdown',e=>{
+  if(act)return;
+  if(e.pointerType==='mouse'&&e.button!==0)return;
+  const now=performance.now();
+  if(e.pointerType==='pen')lastPen=now;
+  if(e.pointerType==='touch'&&st.palm&&(Math.max(e.width||0,e.height||0)>PALM||now-lastPen<900))return;
+  if(drawerOpen){e.preventDefault();setDrawer(false);return;} // first tap only closes the options
+  e.preventDefault();
+  try{stage.setPointerCapture(e.pointerId);}catch(_){}
+  resetClear();hideHint();
+  const b=cur;let target=mctx;
+  if(b.layered){lctx.clearRect(0,0,W,H);live.style.opacity=st.opacity*(b.alpha||1);target=lctx;}
+  const [x,y]=pos(e);
+  act={id:e.pointerId,b,x,y,t:e.timeStamp,v:0,sim:.55,pr:.55,stroke:new Stroke(b,target,{...st})};
+  act.pr=pressure(e,act);act.stroke.add(x,y,act.pr);
+});
+stage.addEventListener('pointermove',e=>{
+  if(!act||e.pointerId!==act.id)return;
+  if(e.pointerType==='pen')lastPen=performance.now();
+  const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
+  for(const ev of (evs.length?evs:[e])){
+    const [x,y]=pos(ev),dt=Math.max(1,ev.timeStamp-act.t),sp=Math.hypot(x-act.x,y-act.y)/dt;
+    act.v=act.v*.7+sp*.3;act.pr=pressure(ev,act);act.stroke.add(x,y,act.pr);act.x=x;act.y=y;act.t=ev.timeStamp;
+  }
+});
+function end(e){
+  if(!act||e.pointerId!==act.id)return;
+  const a=act;act=null;
+  try{stage.releasePointerCapture(e.pointerId);}catch(_){}
+  const box=a.stroke.finish(a.x,a.y,a.pr);
+  if(a.b.layered){
+    mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalAlpha=st.opacity*(a.b.alpha||1);mctx.globalCompositeOperation=a.b.cb||'source-over';
+    mctx.drawImage(live,0,0);mctx.restore();lctx.clearRect(0,0,W,H);
+  }
+  commitPatch(box);
+}
+stage.addEventListener('pointerup',end);
+stage.addEventListener('pointercancel',end);
+
+/* ---------- save as image ---------- */
+const sheet=$('#sheet'),out=$('#out'),msg=$('#sheetMsg');let blobPromise=null;
+$('#save').addEventListener('click',()=>{
+  const r=stage.getBoundingClientRect(),w=Math.round(r.width*DPR),h=Math.round(r.height*DPR);
+  const t=document.createElement('canvas');t.width=w;t.height=h;const c=t.getContext('2d');
+  c.fillStyle=getComputedStyle(app).getPropertyValue('--paper-cur').trim()||'#fff';c.fillRect(0,0,w,h);c.drawImage(main,0,0);
+  out.src=t.toDataURL('image/png');blobPromise=new Promise(res=>t.toBlob(res,'image/png'));
+  msg.textContent='לחיצה ארוכה על התמונה ואז "שמור תמונה" שומרת אותה בגלריה.';sheet.hidden=false;$('#close').focus();
+});
+$('#close').addEventListener('click',()=>{sheet.hidden=true;});
+sheet.addEventListener('click',e=>{if(e.target===sheet)sheet.hidden=true;});
+$('#copy').addEventListener('click',async()=>{
+  try{const blob=await blobPromise;await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);msg.textContent='התמונה הועתקה.';}
+  catch(_){msg.textContent='ההעתקה לא זמינה כאן. לחיצה ארוכה על התמונה מאפשרת לשמור אותה.';}
+});
+
+/* ---------- starter drawing (example, not saved to history) ---------- */
+function demo(){
+  const vw=stage.clientWidth,vh=stage.clientHeight,m=Math.min(vw,vh);
+  const D=(id,color,size,pts)=>paintStroke(mctx,BR.find(b=>b.id===id),{...paint(color),size,opacity:1,smooth:1},pts);
+  D('airbrush','#ffb224',m*.2,path(t=>[vw*.78+Math.cos(t*18)*m*.07*t,vh*.2+Math.sin(t*18)*m*.07*t],120,()=>.8));
+  D('watercolor','#12a594',m*.12,path(t=>[vw*.04+t*vw*.92,vh*.76+Math.sin(t*5)*vh*.035],140,()=>.8));
+  D('watercolor','#30a46c',m*.09,path(t=>[vw*.04+t*vw*.92,vh*.8+Math.sin(t*5+1)*vh*.03],140,()=>.8));
+  D('ink','#5b4636',m*.035,path(t=>[vw*.22+Math.sin(t*3)*3,vh*.74-t*vh*.24],40,t=>.95-.45*t));
+  D('oil','#2f9e6a',m*.1,path(t=>[vw*.22+Math.cos(t*20)*m*.08*(1-t*.5),vh*.44+Math.sin(t*20)*m*.06*(1-t*.5)],160,()=>.8));
+  D('calligraphy','#14181c',m*.035,path(t=>[vw*.08+t*vw*.42,vh*.14+Math.sin(t*12)*vh*.04],140));
+  D('highlighter','#ffe066',m*.03,path(t=>[vw*.08+t*vw*.42,vh*.2],20,()=>.8));
+  D('confetti','#e5484d',m*.05,path(t=>[vw*.5+t*vw*.4,vh*.5-Math.sin(t*Math.PI)*vh*.1],26,()=>.8));
+  sctx.drawImage(main,0,0);
+}
+
+fit();renderPreviews();syncBtns();
+
+/* ---------- install + updates ---------- */
+if('serviceWorker' in navigator){
+  addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').then(reg=>{
+      const offer=w=>{$('#upd').hidden=false;$('#updGo').onclick=()=>w.postMessage('SKIP_WAITING');};
+      if(reg.waiting&&navigator.serviceWorker.controller)offer(reg.waiting);
+      reg.addEventListener('updatefound',()=>{const w=reg.installing;if(!w)return;
+        w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)offer(w);});});
+      setInterval(()=>reg.update().catch(()=>{}),30*60*1000);
+    }).catch(()=>{});
+    let reloaded=false;
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded)return;reloaded=true;location.reload();});
+  });
+}
+$('#updLater').addEventListener('click',()=>{$('#upd').hidden=true;});
+})();
+</script>
+</body>
+</html>
