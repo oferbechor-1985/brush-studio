@@ -101,6 +101,13 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 .fab .btn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 #zoomReset{font:500 12px var(--f-mono);min-width:56px;font-variant-numeric:tabular-nums}
 .ver{margin:0;font:400 11px var(--f-mono);color:var(--muted)}
+.ttl{font:500 17px var(--f-ui);margin:0}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{appearance:none;border:1px solid var(--line);background:transparent;color:var(--fg);font:500 13px var(--f-ui);min-height:44px;padding:0 14px;border-radius:22px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+#fbText{width:100%;min-height:120px;resize:vertical;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:10px;font:16px/1.5 var(--f-ui)}
+.hp{position:absolute;inset-inline-start:-9999px;width:1px;height:1px;opacity:0}
+.card.wide{width:min(520px,100%)}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -154,6 +161,9 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
       </div>
       <div class="stat" id="stat" aria-live="off">ממתין לעט או לאצבע</div>
     </section>
+    <section id="fbSec" hidden><h2>משוב</h2>
+      <div class="actions"><button class="btn" id="fbOpen">משוב ורעיונות</button></div>
+    </section>
     <section><h2>תצוגה</h2>
       <div class="stack"><label class="ctl" for="zoom"><span>זום</span><input id="zoom" type="range" min="100" max="600" step="10" value="100"><output id="zoomOut">100</output></label></div>
     </section>
@@ -166,6 +176,25 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
     </section>
     <p class="ver" id="ver"></p>
   </aside>
+
+  <div class="sheet" id="fb" hidden>
+    <div class="card wide" role="dialog" aria-label="משוב ורעיונות">
+      <h2 class="ttl">משוב ורעיונות</h2>
+      <div class="chips" role="group" aria-label="סוג ההערה">
+        <button type="button" class="chip" data-kind="idea" aria-pressed="true">רעיון</button>
+        <button type="button" class="chip" data-kind="bug" aria-pressed="false">תקלה</button>
+        <button type="button" class="chip" data-kind="other" aria-pressed="false">אחר</button>
+      </div>
+      <textarea id="fbText" maxlength="1500" placeholder="מה הייתם רוצים לשפר או להוסיף? אפשר גם לתאר תקלה." aria-label="ההערה"></textarea>
+      <input class="hp" id="fbWebsite" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <p id="fbMsg">ההערה נשלחת למפתח האפליקציה. אל תכתבו בה פרטים אישיים.</p>
+      <div class="row">
+        <button class="btn" id="fbSend">שליחה</button>
+        <button class="btn" id="fbMic" aria-pressed="false" title="הקלטה קולית"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>הקלטה</button>
+        <button class="btn" id="fbClose">סגור</button>
+      </div>
+    </div>
+  </div>
 
   <div class="sheet" id="upd" hidden><div class="card" role="dialog" aria-label="עדכון"><p id="updMsg">יש גרסה חדשה של האפליקציה.</p><div class="row"><button class="btn" id="updGo">עדכן עכשיו</button><button class="btn" id="updLater">אחר כך</button></div></div></div>
 
@@ -447,7 +476,7 @@ function resetClear(){clearTimeout(clearTimer);clearTimer=0;clearTxt.textContent
 const hint=$('#hint');function hideHint(){hint.hidden=true;}
 
 /* ---------- drawing input ---------- */
-let act=null,lastPen=0,seenReal=false,lastStat=0;
+let lastInput='',act=null,lastPen=0,seenReal=false,lastStat=0;
 const PT={pen:'עט',touch:'מגע / עט קיבולי',mouse:'עכבר'};
 function pressure(ev,a){
   const m=st.pmode;
@@ -485,6 +514,7 @@ function startGesture(){
 }
 stage.addEventListener('pointerdown',e=>{
   if(e.pointerType==='mouse'&&e.button!==0)return;
+  lastInput=e.pointerType;
   const now=performance.now();
   if(e.pointerType==='pen')lastPen=now;
   if(drawerOpen){e.preventDefault();setDrawer(false);dead.add(e.pointerId);return;} // first tap only closes the options
@@ -577,7 +607,7 @@ function demo(){
 }
 
 /* ---------- view: zoom & pan (magnifier) ---------- */
-const APP_VERSION='4';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='5';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world');let vz=1,vx=0,vy=0,hand=false;
 function applyView(){
   const sw=stage.clientWidth,sh=stage.clientHeight;
@@ -636,6 +666,48 @@ function doFill(x,y){
   mctx.putImageData(img,0,0);
   commitPatch([x0/DPR,y0/DPR,(x1+1)/DPR,(y1+1)/DPR]);
 }
+
+/* ---------- feedback ---------- */
+const FEEDBACK_URL=''; // address of the feedback Worker, filled in after it is deployed
+const fb=$('#fb'),fbText=$('#fbText'),fbMsg=$('#fbMsg'),fbSend=$('#fbSend'),fbMic=$('#fbMic'),FB_DEF=fbMsg.textContent;
+let fbKind='idea',fbVoice=false,rec=null,fbLast=0;
+const lsGet=k=>{try{return JSON.parse(localStorage.getItem(k)||'null');}catch(_){return null;}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(_){}};
+$('#fbSec').hidden=!FEEDBACK_URL;
+async function postFb(item){const r=await fetch(FEEDBACK_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(item)});if(!r.ok)throw new Error('http '+r.status);}
+async function flushFb(){
+  if(!FEEDBACK_URL)return;let q=lsGet('fbq')||[];if(!q.length)return;
+  const left=[];for(const it of q){try{await postFb(it);}catch(_){left.push(it);}}lsSet('fbq',left);
+}
+addEventListener('online',flushFb);setTimeout(flushFb,3000);
+document.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click',()=>{fbKind=ch.dataset.kind;document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c===ch?'true':'false'));}));
+$('#fbOpen').addEventListener('click',()=>{setDrawer(false);fbMsg.textContent=FB_DEF;fb.hidden=false;fbText.focus();});
+function closeFb(){if(rec){try{rec.stop();}catch(_){}}fb.hidden=true;}
+$('#fbClose').addEventListener('click',closeFb);
+fb.addEventListener('click',e=>{if(e.target===fb)closeFb();});
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(!SR)fbMic.hidden=true;
+fbMic.addEventListener('click',()=>{
+  if(rec){try{rec.stop();}catch(_){}return;}
+  try{
+    const r=new SR(),base=fbText.value.trim();rec=r;r.lang='he-IL';r.interimResults=true;r.continuous=true;
+    r.onresult=e=>{let t='';for(let i=0;i<e.results.length;i++)t+=e.results[i][0].transcript;fbText.value=(base?base+' ':'')+t;fbVoice=true;};
+    r.onend=()=>{rec=null;fbMic.setAttribute('aria-pressed','false');};
+    r.onerror=e=>{fbMsg.textContent=e.error==='not-allowed'?'אין הרשאה למיקרופון. אפשר ללחוץ על המיקרופון במקלדת.':'ההקלטה לא הצליחה. אפשר ללחוץ על המיקרופון במקלדת.';};
+    r.start();fbMic.setAttribute('aria-pressed','true');fbMsg.textContent='מקשיבים. לחצו שוב על "הקלטה" כדי לעצור.';
+  }catch(_){rec=null;fbMsg.textContent='ההקלטה לא זמינה כאן. אפשר ללחוץ על המיקרופון במקלדת.';}
+});
+fbSend.addEventListener('click',async()=>{
+  const text=fbText.value.trim();
+  if(text.length<3){fbMsg.textContent='כתבו לפחות כמה מילים.';return;}
+  if(Date.now()-fbLast<8000){fbMsg.textContent='אפשר לשלוח שוב בעוד כמה שניות.';return;}
+  if(rec){try{rec.stop();}catch(_){}}
+  fbLast=Date.now();fbSend.disabled=true;
+  const item={kind:fbKind,text,voice:fbVoice,version:APP_VERSION,input:lastInput,screen:innerWidth+'x'+innerHeight,lang:navigator.language,website:$('#fbWebsite').value};
+  try{await postFb(item);fbMsg.textContent='תודה, ההערה נשלחה.';fbText.value='';fbVoice=false;}
+  catch(_){const q=lsGet('fbq')||[];q.push(item);lsSet('fbq',q.slice(-20));fbMsg.textContent='אין חיבור כרגע. ההערה נשמרה ותישלח בפעם הבאה שהאפליקציה תיפתח.';fbText.value='';fbVoice=false;}
+  fbSend.disabled=false;
+});
 
 fit();renderPreviews();syncBtns();
 
