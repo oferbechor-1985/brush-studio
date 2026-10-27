@@ -607,7 +607,7 @@ function demo(){
 }
 
 /* ---------- view: zoom & pan (magnifier) ---------- */
-const APP_VERSION='6';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='7';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world');let vz=1,vx=0,vy=0,hand=false;
 function applyView(){
   const sw=stage.clientWidth,sh=stage.clientHeight;
@@ -682,26 +682,46 @@ async function flushFb(){
 addEventListener('online',flushFb);setTimeout(flushFb,3000);
 document.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click',()=>{fbKind=ch.dataset.kind;document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c===ch?'true':'false'));}));
 $('#fbOpen').addEventListener('click',()=>{setDrawer(false);fbMsg.textContent=FB_DEF;fb.hidden=false;fbText.focus();});
-function closeFb(){if(rec){try{rec.stop();}catch(_){}}fb.hidden=true;}
+function closeFb(){stopRec();fb.hidden=true;}
 $('#fbClose').addEventListener('click',closeFb);
 fb.addEventListener('click',e=>{if(e.target===fb)closeFb();});
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 if(!SR)fbMic.hidden=true;
+let listening=false,committed='',pend='',quiet=0;
+function stopRec(){listening=false;if(rec){try{rec.stop();}catch(_){}}fbMic.setAttribute('aria-pressed','false');}
+function listen(){
+  const r=new SR();rec=r;r.lang='he-IL';r.interimResults=true;r.continuous=false;let got=false;
+  r.onresult=e=>{
+    let fin='',tmp='';
+    for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)fin+=t;else tmp+=t;}
+    got=true;fbVoice=true;
+    if(fin)committed=(committed?committed+' ':'')+fin.trim();
+    pend=tmp.trim();
+    fbText.value=pend?(committed?committed+' ':'')+pend:committed;
+  };
+  r.onerror=e=>{
+    if(e.error==='no-speech'||e.error==='aborted')return;
+    listening=false;
+    fbMsg.textContent=(e.error==='not-allowed'||e.error==='service-not-allowed')?'אין הרשאה למיקרופון. אפשר ללחוץ על המיקרופון במקלדת.':'ההקלטה לא הצליחה. אפשר ללחוץ על המיקרופון במקלדת.';
+  };
+  r.onend=()=>{
+    if(rec===r)rec=null;
+    if(pend){committed=(committed?committed+' ':'')+pend;pend='';fbText.value=committed;}
+    if(listening&&(got?(quiet=0,true):++quiet<2)){setTimeout(()=>{if(listening){try{listen();}catch(_){stopRec();}}},150);}
+    else{stopRec();if(fbMsg.textContent.startsWith('מקשיבים'))fbMsg.textContent=FB_DEF;}
+  };
+  r.start();
+}
 fbMic.addEventListener('click',()=>{
-  if(rec){try{rec.stop();}catch(_){}return;}
-  try{
-    const r=new SR(),base=fbText.value.trim();rec=r;r.lang='he-IL';r.interimResults=true;r.continuous=true;
-    r.onresult=e=>{let t='';for(let i=0;i<e.results.length;i++)t+=e.results[i][0].transcript;fbText.value=(base?base+' ':'')+t;fbVoice=true;};
-    r.onend=()=>{rec=null;fbMic.setAttribute('aria-pressed','false');};
-    r.onerror=e=>{fbMsg.textContent=e.error==='not-allowed'?'אין הרשאה למיקרופון. אפשר ללחוץ על המיקרופון במקלדת.':'ההקלטה לא הצליחה. אפשר ללחוץ על המיקרופון במקלדת.';};
-    r.start();fbMic.setAttribute('aria-pressed','true');fbMsg.textContent='מקשיבים. לחצו שוב על "הקלטה" כדי לעצור.';
-  }catch(_){rec=null;fbMsg.textContent='ההקלטה לא זמינה כאן. אפשר ללחוץ על המיקרופון במקלדת.';}
+  if(listening){stopRec();return;}
+  try{committed=fbText.value.trim();pend='';quiet=0;listening=true;fbMic.setAttribute('aria-pressed','true');fbMsg.textContent='מקשיבים. לחצו שוב על "הקלטה" כדי לעצור.';listen();}
+  catch(_){listening=false;rec=null;fbMic.setAttribute('aria-pressed','false');fbMsg.textContent='ההקלטה לא זמינה כאן. אפשר ללחוץ על המיקרופון במקלדת.';}
 });
 fbSend.addEventListener('click',async()=>{
   const text=fbText.value.trim();
   if(text.length<3){fbMsg.textContent='כתבו לפחות כמה מילים.';return;}
   if(Date.now()-fbLast<8000){fbMsg.textContent='אפשר לשלוח שוב בעוד כמה שניות.';return;}
-  if(rec){try{rec.stop();}catch(_){}}
+  stopRec();
   fbLast=Date.now();fbSend.disabled=true;
   const item={kind:fbKind,text,voice:fbVoice,version:APP_VERSION,input:lastInput,screen:innerWidth+'x'+innerHeight,lang:navigator.language,website:$('#fbWebsite').value};
   try{await postFb(item);fbMsg.textContent='תודה, ההערה נשלחה.';fbText.value='';fbVoice=false;}
