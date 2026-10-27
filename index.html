@@ -16,19 +16,19 @@
 <style>
 /* Layout: one-screen studio. Brush rail beside the canvas (strip under it on phones), tool bar on top. */
 :root{
-  --bg:#EDF0F2; --panel:#F7F8F9; --fg:#14181C; --muted:#5A6570; --line:#D3D9DF;
+  --bg:#EDF0F2; --ws:#2B3138; --panel:#F7F8F9; --fg:#14181C; --muted:#5A6570; --line:#D3D9DF;
   --accent:#0B7A78; --accent-fg:#FFFFFF; --accent-soft:#D5ECEA; --danger:#B42318;
   --paper-light:#FFFFFF; --paper-dark:#1C1F24;
   --f-ui:'Heebo',system-ui,sans-serif; --f-display:'Secular One','Heebo',system-ui,sans-serif; --f-mono:'DM Mono',ui-monospace,monospace;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#0E1113; --panel:#171B1E; --fg:#E7ECEF; --muted:#8D99A2; --line:#2B3338;
+    --bg:#0E1113; --ws:#050607; --panel:#171B1E; --fg:#E7ECEF; --muted:#8D99A2; --line:#2B3338;
     --accent:#3FC8C2; --accent-fg:#06201F; --accent-soft:#12302F; --danger:#F97066; color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0E1113; --panel:#171B1E; --fg:#E7ECEF; --muted:#8D99A2; --line:#2B3338;
+  --bg:#0E1113; --ws:#050607; --panel:#171B1E; --fg:#E7ECEF; --muted:#8D99A2; --line:#2B3338;
   --accent:#3FC8C2; --accent-fg:#06201F; --accent-soft:#12302F; --danger:#F97066; color-scheme:dark;
 }
 html{box-sizing:border-box;height:100%;overscroll-behavior:none}
@@ -71,7 +71,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 .pv{width:100%;height:40px;border-radius:6px;background:var(--paper-cur);display:block}
 .brush span{text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-.stage{position:fixed;inset:0;overflow:hidden;background:var(--paper-cur);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:crosshair}
+.stage{position:fixed;inset:0;overflow:hidden;background:var(--ws);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:crosshair}
 .stage canvas{position:absolute;top:0;left:0;display:block}
 #live{pointer-events:none}
 .hint{position:absolute;inset-inline-start:16px;bottom:calc(14px + env(safe-area-inset-bottom, 0px));max-width:calc(100% - 32px);padding:8px 12px;border-radius:8px;background:var(--panel);color:var(--muted);
@@ -97,7 +97,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 .drawer section{min-width:0}
 .stack{display:flex;flex-direction:column;gap:2px}
 .actions{display:flex;flex-wrap:wrap;gap:8px}
-#world{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform}
+#world{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform;background:var(--paper-cur);box-shadow:0 0 0 1px rgba(255,255,255,.14),0 8px 32px rgba(0,0,0,.5)}
 .fab .btn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 #zoomReset{font:500 12px var(--f-mono);min-width:56px;font-variant-numeric:tabular-nums}
 .ver{margin:0;font:400 11px var(--f-mono);color:var(--muted)}
@@ -108,6 +108,23 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 #fbText{width:100%;min-height:120px;resize:vertical;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:10px;font:16px/1.5 var(--f-ui)}
 .hp{position:absolute;inset-inline-start:-9999px;width:1px;height:1px;opacity:0}
 .card.wide{width:min(520px,100%)}
+.cpbtn{padding:0;width:44px}
+.cpdot{width:26px;height:26px;border-radius:50%;background:#14181c;box-shadow:0 0 0 2px var(--panel),0 0 0 3px var(--line)}
+.cp{margin-top:12px;display:flex;flex-direction:column;gap:12px}
+.sv{position:relative;height:170px;border-radius:10px;touch-action:none;cursor:crosshair;border:1px solid var(--line);
+  background:linear-gradient(to top,#000,rgba(0,0,0,0)),linear-gradient(to right,#fff,rgba(255,255,255,0)),var(--hc,#f00)}
+.svt{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.5),0 1px 4px rgba(0,0,0,.5);pointer-events:none}
+.hue{-webkit-appearance:none;appearance:none;display:block;width:100%;height:26px;margin:0;border-radius:13px;background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)}
+.hue::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:transparent;border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.5),0 1px 4px rgba(0,0,0,.5)}
+.hue::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:transparent;border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.5)}
+.hex{width:100%;min-height:44px;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:10px;padding:0 12px;font:16px var(--f-mono)}
+.vpanel{position:fixed;z-index:12;bottom:calc(14px + env(safe-area-inset-bottom, 0px));inset-inline:0;margin-inline:auto;width:min(420px,calc(100% - 32px));
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:6px;box-shadow:0 6px 28px rgba(0,0,0,.4)}
+.vrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.vrow label{width:48px;font-size:13px;color:var(--muted)}
+.vrow input[type=number]{width:84px;min-height:44px;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:10px;padding:0 10px;font:16px var(--f-mono);text-align:center}
+.vrow input[type=range]{flex:1;min-width:120px;accent-color:var(--accent);min-height:44px}
+.vrow output{font:500 12px var(--f-mono);min-width:5ch;text-align:end;font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -124,7 +141,28 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
     <button class="btn" id="undo" aria-label="בטל" title="בטל (Ctrl+Z)" disabled><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
     <button class="btn" id="redo" aria-label="החזר" title="החזר (Ctrl+Shift+Z)" disabled><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
     <button class="btn" id="hand" aria-label="זכוכית מגדלת" aria-pressed="false" title="זכוכית מגדלת: גרירה בעט או באצבע מזיזה את הציור. צביטה בשתי אצבעות מגדילה תמיד."><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5M8 10.5h5M10.5 8v5"/></svg></button>
-    <button class="btn" id="zoomReset" hidden title="חזרה לגודל מלא">100%</button>
+    <button class="btn" id="viewBtn" aria-expanded="false" aria-controls="vp" title="זום וסיבוב" style="font:500 12px var(--f-mono);min-width:64px">100%</button>
+  </div>
+
+  <div class="vpanel" id="vp" hidden role="group" aria-label="זום וסיבוב">
+    <div class="vrow">
+      <label for="ang">זווית</label>
+      <input id="ang" type="number" inputmode="decimal" step="1" value="0" dir="ltr">
+      <span aria-hidden="true">°</span>
+      <button class="btn" dir="ltr" id="aM" aria-label="סיבוב 90 מעלות שמאלה">−90</button>
+      <button class="btn" dir="ltr" id="aP" aria-label="סיבוב 90 מעלות ימינה">+90</button>
+      <button class="btn" id="aZ" title="זווית בסיסית">0</button>
+    </div>
+    <div class="vrow">
+      <label for="zm">זום</label>
+      <input id="zm" type="range" min="0" max="100" step="1" value="60">
+      <output id="zmOut">100%</output>
+    </div>
+    <div class="vrow">
+      <button class="btn" id="vFit">התאם לדף</button>
+      <button class="btn" id="v100">100%</button>
+      <button class="btn" id="vClose">סגור</button>
+    </div>
   </div>
 
   <aside class="drawer" id="drawer" aria-label="אפשרויות ציור">
@@ -135,8 +173,13 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
     <section><h2>מברשות</h2><nav class="brushes" id="brushes" aria-label="מברשות"></nav></section>
     <section><h2>צבע</h2>
       <div class="grp colors" role="group" aria-label="צבע">
-        <input type="color" id="color" value="#14181c" aria-label="צבע מותאם אישית">
+        <button type="button" class="btn cpbtn" id="cpBtn" aria-expanded="false" aria-controls="cp" aria-label="צבע מותאם אישית" title="צבע מותאם אישית"><span class="cpdot" id="cpDot"></span></button>
         <div class="sw" id="sw"></div>
+      </div>
+      <div class="cp" id="cp" hidden dir="ltr">
+        <div class="sv" id="sv"><div class="svt" id="svt"></div></div>
+        <input class="hue" id="hue" type="range" min="0" max="360" step="1" value="0" aria-label="גוון">
+        <input class="hex" id="hex" maxlength="7" spellcheck="false" autocomplete="off" aria-label="קוד צבע" value="#14181c">
       </div>
     </section>
     <section><h2>קו</h2>
@@ -163,9 +206,6 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
     </section>
     <section id="fbSec" hidden><h2>משוב</h2>
       <div class="actions"><button class="btn" id="fbOpen">משוב ורעיונות</button></div>
-    </section>
-    <section><h2>תצוגה</h2>
-      <div class="stack"><label class="ctl" for="zoom"><span>זום</span><input id="zoom" type="range" min="100" max="600" step="10" value="100"><output id="zoomOut">100</output></label></div>
     </section>
     <section><h2>דף</h2>
       <div class="actions" role="group" aria-label="דף">
@@ -388,7 +428,7 @@ function fit(){
   }
   live.width=pw;live.height=ph;
   main.style.width=live.style.width=nw+'px';main.style.height=live.style.height=nh+'px';
-  W=nw;H=nh;mctx.setTransform(DPR,0,0,DPR,0,0);lctx.setTransform(DPR,0,0,DPR,0,0);
+  W=nw;H=nh;world.style.width=W+'px';world.style.height=H+'px';mctx.setTransform(DPR,0,0,DPR,0,0);lctx.setTransform(DPR,0,0,DPR,0,0);
   if(!demoDone){demoDone=true;demo();}
   applyView();
 }
@@ -402,8 +442,22 @@ const COLORS=[['#14181c','שחור'],['#e5484d','אדום'],['#f76b15','כתום
 const swEl=$('#sw');
 COLORS.forEach(([hex,name])=>{const b=document.createElement('button');b.type='button';b.style.background=hex;b.setAttribute('aria-label',name);b.dataset.hex=hex;b.setAttribute('aria-pressed',hex===st.color?'true':'false');
   b.addEventListener('click',()=>setColor(hex));swEl.appendChild(b);});
-function setColor(hex){Object.assign(st,paint(hex));$('#dot').style.background=hex;$('#color').value=hex;swEl.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.hex===hex?'true':'false'));queuePreviews();}
-$('#color').addEventListener('input',e=>setColor(e.target.value));
+const sv=$('#sv'),svt=$('#svt'),hue=$('#hue'),hexIn=$('#hex');let cH=0,cS=0,cV=0;
+function rgb2hsv([r,g,b]){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;let h=0;if(d){h=mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4;h=(h*60+360)%360;}return [h,mx?d/mx:0,mx];}
+function hsv2hex(h,s,v){const f=n=>{const k=(n+h/60)%6;return v-v*s*Math.max(0,Math.min(k,4-k,1));};return '#'+[f(5),f(3),f(1)].map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('');}
+function syncCp(){sv.style.setProperty('--hc',`hsl(${cH},100%,50%)`);svt.style.left=(cS*100)+'%';svt.style.top=((1-cV)*100)+'%';hue.value=Math.round(cH);if(document.activeElement!==hexIn)hexIn.value=st.color;}
+function setColor(hex,fromPicker){
+  Object.assign(st,paint(hex));$('#dot').style.background=hex;$('#cpDot').style.background=hex;
+  if(!fromPicker){const [h,s,v]=rgb2hsv(st.rgb);if(s>.001&&v>.001)cH=h;cS=s;cV=v;}
+  swEl.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.hex===hex?'true':'false'));syncCp();queuePreviews();
+}
+function svMove(e){const r=sv.getBoundingClientRect();cS=clamp((e.clientX-r.left)/r.width,0,1);cV=1-clamp((e.clientY-r.top)/r.height,0,1);setColor(hsv2hex(cH,cS,cV),true);}
+sv.addEventListener('pointerdown',e=>{e.preventDefault();try{sv.setPointerCapture(e.pointerId);}catch(_){}svMove(e);});
+sv.addEventListener('pointermove',e=>{if(sv.hasPointerCapture&&sv.hasPointerCapture(e.pointerId))svMove(e);});
+hue.addEventListener('input',()=>{cH=+hue.value;setColor(hsv2hex(cH,cS,cV),true);});
+hexIn.addEventListener('input',()=>{const v=hexIn.value.trim().replace(/^#?/,'#').toLowerCase();if(/^#[0-9a-f]{6}$/.test(v))setColor(v);});
+hexIn.addEventListener('blur',()=>{hexIn.value=st.color;});
+$('#cpBtn').addEventListener('click',()=>{const o=$('#cp').hidden;$('#cp').hidden=!o;$('#cpBtn').setAttribute('aria-expanded',o?'true':'false');});
 
 const brEl=$('#brushes');
 BR.forEach(b=>{const el=document.createElement('button');el.type='button';el.className='brush';el.dataset.id=b.id;el.setAttribute('aria-pressed',b===cur?'true':'false');
@@ -444,7 +498,7 @@ $('#palm').addEventListener('change',e=>{st.palm=e.target.checked;});
 /* ---------- options drawer ---------- */
 const drawer=$('#drawer'),menu=$('#menu');let drawerOpen=false;
 function setDrawer(o){drawerOpen=o;drawer.classList.toggle('open',o);menu.setAttribute('aria-expanded',o?'true':'false');drawer.inert=!o;}
-menu.addEventListener('click',()=>setDrawer(!drawerOpen));
+menu.addEventListener('click',()=>{setPanel(false);setDrawer(!drawerOpen);});
 $('#dclose').addEventListener('click',()=>setDrawer(false));
 addEventListener('keydown',e=>{if(e.key==='Escape')setDrawer(false);});
 setDrawer(false);
@@ -489,7 +543,7 @@ function pressure(ev,a){
   if(now-lastStat>100){lastStat=now;$('#stat').textContent=`${PT[ev.pointerType]||ev.pointerType} · לחץ ${pr.toFixed(2)} · ${src}`;}
   return pr;
 }
-function pos(ev){const r=main.getBoundingClientRect();return [(ev.clientX-r.left)/vz,(ev.clientY-r.top)/vz];}
+function pos(ev){return toPage(ev.clientX,ev.clientY);}
 
 stage.addEventListener('contextmenu',e=>e.preventDefault());
 const touches=new Map(),dead=new Set();let gest=null,pan=null;
@@ -508,16 +562,15 @@ function cancelStroke(){
   mctx.clearRect(r.x,r.y,r.w,r.h);mctx.drawImage(shadow,r.x,r.y,r.w,r.h,r.x,r.y,r.w,r.h);mctx.restore();
 }
 function startGesture(){
-  const [a,b]=[...touches.values()],r=srect();
-  gest={d0:Math.hypot(a.x-b.x,a.y-b.y)||1,z0:vz,mx:(a.x+b.x)/2-r.left,my:(a.y+b.y)/2-r.top};
-  gest.wx=(gest.mx-vx)/vz;gest.wy=(gest.my-vy)/vz;
+  const [a,b]=[...touches.values()],r=srect(),mx=(a.x+b.x)/2-r.left,my=(a.y+b.y)/2-r.top,[px,py]=toPageS(mx,my);
+  gest={d0:Math.hypot(a.x-b.x,a.y-b.y)||1,z0:vz,a0:va,f0:Math.atan2(b.y-a.y,b.x-a.x)/RAD,px,py};
 }
 stage.addEventListener('pointerdown',e=>{
   if(e.pointerType==='mouse'&&e.button!==0)return;
   lastInput=e.pointerType;
   const now=performance.now();
   if(e.pointerType==='pen')lastPen=now;
-  if(drawerOpen){e.preventDefault();setDrawer(false);dead.add(e.pointerId);return;} // first tap only closes the options
+  if(drawerOpen||!vp.hidden){e.preventDefault();setDrawer(false);setPanel(false);dead.add(e.pointerId);return;} // first tap only closes the open panel
   if(e.pointerType==='touch'){
     if(st.palm&&(Math.max(e.width||0,e.height||0)>PALM||now-lastPen<900)){dead.add(e.pointerId);return;}
     if(act&&act.type==='pen'){dead.add(e.pointerId);return;}
@@ -527,10 +580,11 @@ stage.addEventListener('pointerdown',e=>{
   }
   if(act||gest||pan)return;
   e.preventDefault();
+  if(hand){try{stage.setPointerCapture(e.pointerId);}catch(_){}resetClear();hideHint();pan={id:e.pointerId,x:e.clientX,y:e.clientY,vx,vy};return;}
+  const b=cur,[x,y]=pos(e);
+  if(x<0||y<0||x>W||y>H){dead.add(e.pointerId);return;} // the dark frame is not paper
   try{stage.setPointerCapture(e.pointerId);}catch(_){}
   resetClear();hideHint();
-  if(hand){pan={id:e.pointerId,x:e.clientX,y:e.clientY,vx,vy};return;}
-  const b=cur,[x,y]=pos(e);
   if(b.fill){act={id:e.pointerId,type:e.pointerType,fill:true,x,y,cx:e.clientX,cy:e.clientY,moved:false};return;}
   let target=mctx;
   if(b.layered){lctx.clearRect(0,0,W,H);live.style.opacity=st.opacity*(b.alpha||1);target=lctx;}
@@ -543,7 +597,10 @@ stage.addEventListener('pointermove',e=>{
     if(!touches.has(e.pointerId)||touches.size<2)return;
     const [a,b]=[...touches.values()],r=srect();
     const d=Math.hypot(a.x-b.x,a.y-b.y)||1,mx=(a.x+b.x)/2-r.left,my=(a.y+b.y)/2-r.top;
-    vz=clamp(gest.z0*d/gest.d0,1,6);vx=mx-gest.wx*vz;vy=my-gest.wy*vz;applyView();return;
+    let na=gest.a0+(Math.atan2(b.y-a.y,b.x-a.x)/RAD-gest.f0);
+    const q=Math.round(na/90)*90;if(Math.abs(na-q)<4)na=q; // snaps to straight angles
+    vz=clamp(gest.z0*d/gest.d0,MINZ,MAXZ);va=na;
+    const [ox,oy]=rot(gest.px*vz,gest.py*vz,va);vx=mx-ox;vy=my-oy;applyView();return;
   }
   if(pan){if(e.pointerId===pan.id){vx=pan.vx+(e.clientX-pan.x);vy=pan.vy+(e.clientY-pan.y);applyView();}return;}
   if(!act||e.pointerId!==act.id)return;
@@ -573,7 +630,7 @@ function end(e){
 }
 stage.addEventListener('pointerup',end);
 stage.addEventListener('pointercancel',end);
-stage.addEventListener('wheel',e=>{e.preventDefault();const r=srect();zoomAt(e.clientX-r.left,e.clientY-r.top,vz*(e.deltaY<0?1.15:1/1.15));},{passive:false});
+stage.addEventListener('wheel',e=>{e.preventDefault();const r=srect();viewAt(e.clientX-r.left,e.clientY-r.top,vz*(e.deltaY<0?1.15:1/1.15),va);},{passive:false});
 
 /* ---------- save as image ---------- */
 const sheet=$('#sheet'),out=$('#out'),msg=$('#sheetMsg');let blobPromise=null;
@@ -606,18 +663,44 @@ function demo(){
   sctx.drawImage(main,0,0);
 }
 
-/* ---------- view: zoom & pan (magnifier) ---------- */
-const APP_VERSION='7';$('#ver').textContent='גרסה '+APP_VERSION;
-const world=$('#world');let vz=1,vx=0,vy=0,hand=false;
+/* ---------- view: zoom, pan, rotate ---------- */
+const APP_VERSION='8';$('#ver').textContent='גרסה '+APP_VERSION;
+const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
+let vz=1,vx=0,vy=0,va=0,hand=false;
+const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
+const wrapA=a=>{a=((a%360)+360)%360;return a>180?a-360:a;};
+const rot=(x,y,a)=>{const c=Math.cos(a*RAD),s=Math.sin(a*RAD);return [x*c-y*s,x*s+y*c];};
+function toPageS(sx,sy){sx-=vx;sy-=vy;const c=Math.cos(va*RAD),s=Math.sin(va*RAD);return [(sx*c+sy*s)/vz,(-sx*s+sy*c)/vz];}
+function toPage(cx,cy){const r=srect();return toPageS(cx-r.left,cy-r.top);}
 function applyView(){
   const sw=stage.clientWidth,sh=stage.clientHeight;
-  vz=clamp(vz,1,6);vx=clamp(vx,Math.min(0,sw-W*vz),0);vy=clamp(vy,Math.min(0,sh-H*vz),0);
-  world.style.transform=`translate(${vx}px,${vy}px) scale(${vz})`;
-  const z=Math.round(vz*100),zr=$('#zoomReset');zr.hidden=z<=100;zr.textContent=z+'%';$('#zoom').value=z;$('#zoomOut').textContent=z;
+  vz=clamp(vz,MINZ,MAXZ);
+  const [ox,oy]=rot(W/2*vz,H/2*vz,va),cx=vx+ox,cy=vy+oy;  // the page centre always stays on screen
+  vx+=clamp(cx,0,sw)-cx;vy+=clamp(cy,0,sh)-cy;
+  world.style.transform=`translate(${vx}px,${vy}px) rotate(${va}deg) scale(${vz})`;
+  const a=Math.round(wrapA(va)*10)/10;
+  $('#viewBtn').textContent=Math.round(vz*100)+'%'+(Math.abs(a)>=.1?' · '+a+'°':'');
+  zm.value=Math.round(100*Math.log(vz/MINZ)/LZ);$('#zmOut').textContent=Math.round(vz*100)+'%';
+  if(document.activeElement!==angIn)angIn.value=a;
 }
-function zoomAt(cx,cy,nz){nz=clamp(nz,1,6);const wx=(cx-vx)/vz,wy=(cy-vy)/vz;vz=nz;vx=cx-wx*vz;vy=cy-wy*vz;applyView();}
-$('#zoom').addEventListener('input',e=>{const r=stage.getBoundingClientRect();zoomAt(r.width/2,r.height/2,+e.target.value/100);});
-$('#zoomReset').addEventListener('click',()=>{vz=1;vx=0;vy=0;applyView();});
+function viewAt(cx,cy,nz,na){const [px,py]=toPageS(cx,cy);vz=clamp(nz,MINZ,MAXZ);va=na;const [ox,oy]=rot(px*vz,py*vz,va);vx=cx-ox;vy=cy-oy;applyView();}
+const mid=()=>[stage.clientWidth/2,stage.clientHeight/2];
+function fitView(){
+  const sw=stage.clientWidth,sh=stage.clientHeight,c=Math.abs(Math.cos(va*RAD)),s=Math.abs(Math.sin(va*RAD)),bw=W*c+H*s,bh=W*s+H*c,m=24;
+  vz=clamp(Math.min((sw-2*m)/bw,(sh-2*m)/bh),MINZ,MAXZ);
+  const [ox,oy]=rot(W/2*vz,H/2*vz,va);vx=sw/2-ox;vy=sh/2-oy;applyView();
+}
+function setPanel(o){vp.hidden=!o;if(o)setDrawer(false);$('#viewBtn').setAttribute('aria-expanded',o?'true':'false');}
+$('#viewBtn').addEventListener('click',()=>setPanel(vp.hidden));
+$('#vClose').addEventListener('click',()=>setPanel(false));
+$('#vFit').addEventListener('click',fitView);
+$('#v100').addEventListener('click',()=>{const [cx,cy]=mid();viewAt(cx,cy,1,va);});
+angIn.addEventListener('input',()=>{const v=parseFloat(angIn.value);if(Number.isFinite(v)){const [cx,cy]=mid();viewAt(cx,cy,vz,v);}});
+angIn.addEventListener('blur',()=>{angIn.value=Math.round(wrapA(va)*10)/10;});
+$('#aM').addEventListener('click',()=>{const [cx,cy]=mid();viewAt(cx,cy,vz,wrapA(va-90));});
+$('#aP').addEventListener('click',()=>{const [cx,cy]=mid();viewAt(cx,cy,vz,wrapA(va+90));});
+$('#aZ').addEventListener('click',()=>{const [cx,cy]=mid();viewAt(cx,cy,vz,0);});
+zm.addEventListener('input',()=>{const [cx,cy]=mid();viewAt(cx,cy,MINZ*Math.exp(LZ*(+zm.value)/100),va);});
 $('#hand').addEventListener('click',()=>{hand=!hand;$('#hand').setAttribute('aria-pressed',hand?'true':'false');stage.style.cursor=hand?'grab':'crosshair';});
 bind('tol',()=>{});
 
@@ -729,7 +812,7 @@ fbSend.addEventListener('click',async()=>{
   fbSend.disabled=false;
 });
 
-fit();renderPreviews();syncBtns();
+syncCp();fit();renderPreviews();syncBtns();
 
 /* ---------- install + updates ---------- */
 if('serviceWorker' in navigator){
