@@ -145,6 +145,16 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 #cmark::after{width:calc(2px*var(--iz,1));height:calc(14px*var(--iz,1))}
 .pill{position:fixed;z-index:11;bottom:calc(14px + env(safe-area-inset-bottom, 0px));inset-inline:0;margin-inline:auto;width:max-content;max-width:calc(100% - 32px);background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 16px;display:flex;align-items:center;gap:10px;font-size:13px;box-shadow:0 6px 28px rgba(0,0,0,.4)}
 .loupe{position:fixed;z-index:15;width:64px;height:64px;border-radius:50%;border:4px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.5),0 4px 14px rgba(0,0,0,.5);pointer-events:none;transform:translate(-50%,-100%)}
+#ish{position:absolute;inset:0;pointer-events:none;z-index:2;box-shadow:inset calc(var(--ft,28px)*.12) calc(var(--ft,28px)*.2) calc(var(--ft,28px)*1.1) rgba(45,28,6,.55),inset 0 0 calc(var(--ft,28px)*.8) rgba(45,28,6,.28)}
+#wf{position:absolute;inset:calc(var(--ft,28px)*-1);pointer-events:none;z-index:3;box-shadow:0 calc(var(--ft,28px)*.35) calc(var(--ft,28px)*1.2) rgba(0,0,0,.55)}
+#wf i{position:absolute;inset:0;display:block}
+#wf .t{background:repeating-linear-gradient(0deg,rgba(110,70,25,.07) 0 1px,transparent 1px 6px),linear-gradient(#efd7ae,#dfc08f);clip-path:polygon(0 0,100% 0,calc(100% - var(--ft,28px)) var(--ft,28px),var(--ft,28px) var(--ft,28px))}
+#wf .b{background:repeating-linear-gradient(0deg,rgba(110,70,25,.07) 0 1px,transparent 1px 6px),linear-gradient(#c9a673,#b58d5a);clip-path:polygon(0 100%,100% 100%,calc(100% - var(--ft,28px)) calc(100% - var(--ft,28px)),var(--ft,28px) calc(100% - var(--ft,28px)))}
+#wf .l{background:repeating-linear-gradient(90deg,rgba(110,70,25,.07) 0 1px,transparent 1px 6px),linear-gradient(90deg,#e0c293,#d2b180);clip-path:polygon(0 0,var(--ft,28px) var(--ft,28px),var(--ft,28px) calc(100% - var(--ft,28px)),0 100%)}
+#wf .r{background:repeating-linear-gradient(90deg,rgba(110,70,25,.07) 0 1px,transparent 1px 6px),linear-gradient(90deg,#c19d6a,#b08855);clip-path:polygon(100% 0,100% 100%,calc(100% - var(--ft,28px)) calc(100% - var(--ft,28px)),calc(100% - var(--ft,28px)) var(--ft,28px))}
+#wf::before{content:"";position:absolute;inset:0;z-index:1;box-shadow:inset 0 0 0 calc(1px*var(--iz,1)) rgba(255,240,210,.55)}
+#wf::after{content:"";position:absolute;inset:var(--ft,28px);z-index:1;box-shadow:0 0 0 calc(1.5px*var(--iz,1)) rgba(70,45,15,.65),0 0 0 calc(3px*var(--iz,1)) rgba(255,235,200,.22)}
+.actions .btn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -152,9 +162,9 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 <body>
 <div id="app" data-paper="light" dir="rtl" lang="he">
   <main class="stage" id="stage">
-    <div id="world"><canvas id="main"></canvas><canvas id="live"></canvas><div id="cmark" hidden></div>
+    <div id="world"><canvas id="main"></canvas><canvas id="live"></canvas><div id="ish"></div><div id="wf"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i></div><div id="cmark" hidden></div>
       <div id="pframe" hidden data-mode="page"><div class="ph body" data-k="body"></div><div class="ph n" data-k="n"></div><div class="ph s" data-k="s"></div><div class="ph e" data-k="e"></div><div class="ph w" data-k="w"></div><div class="ph nw" data-k="nw"></div><div class="ph ne" data-k="ne"></div><div class="ph sw" data-k="sw"></div><div class="ph se" data-k="se"></div></div></div>
-    <div class="hint" id="hint">זו דוגמה לניסוי. פתחו את האפשרויות מהכפתור למעלה, ו"נקה" פותח דף חלק.</div>
+    <div class="hint" id="hint">פתחו את האפשרויות מהכפתור למעלה, ו"נקה" פותח דף חלק.</div>
   </main>
 
   <div class="fab" role="group" aria-label="כלים מהירים">
@@ -243,6 +253,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
         <button class="btn" id="save" title="שמירה כתמונה"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 9"/></svg>שמור</button>
         <button class="btn" id="psize" title="שינוי גודל הדף במסגרת צהובה"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/><path d="M3 9V3h6M21 15v6h-6"/></svg>גודל הדף</button>
         <button class="btn" id="imgBtn" title="הוספת תמונה מהגלריה"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 16V9M9 12l3-3 3 3"/></svg>תמונה</button>
+        <button class="btn" id="frameBtn" aria-pressed="true" title="הצגה והסתרה של המסגרת סביב הדף">מסגרת</button>
         <input type="file" id="imgIn" accept="image/*" hidden>
       </div>
     </section>
@@ -523,8 +534,8 @@ function fit(){
   }
   live.width=pw;live.height=ph;
   main.style.width=live.style.width=nw+'px';main.style.height=live.style.height=nh+'px';
-  W=nw;H=nh;world.style.width=W+'px';world.style.height=H+'px';mctx.setTransform(DPR,0,0,DPR,0,0);lctx.setTransform(DPR,0,0,DPR,0,0);
-  if(!demoDone){demoDone=true;demo();}
+  W=nw;H=nh;world.style.width=W+'px';world.style.height=H+'px';mctx.setTransform(DPR,0,0,DPR,0,0);lctx.setTransform(DPR,0,0,DPR,0,0);updateFrameSize();
+  if(!demoDone){demoDone=true;fitView();}
   applyView();
 }
 new ResizeObserver(fit).observe(stage);
@@ -622,7 +633,7 @@ menu.addEventListener('click',()=>{setPanel(false);setDrawer(!drawerOpen);});
 $('#dclose').addEventListener('click',()=>setDrawer(false));
 addEventListener('keydown',e=>{if(e.key==='Escape'){setDrawer(false);exitFrame();}});
 setDrawer(false);
-$('#paper').addEventListener('click',()=>{app.dataset.paper=app.dataset.paper==='light'?'dark':'light';queuePreviews();});
+$('#paper').addEventListener('click',()=>{app.dataset.paper=app.dataset.paper==='light'?'dark':'light';queuePreviews();scheduleSave();});
 
 /* ---------- history (bounding-box patches) ---------- */
 const hist=[];let hi=0;
@@ -634,10 +645,10 @@ function commitPatch(box){
   const w=x1-x,h=y1-y;if(w<=0||h<=0)return;
   const before=sctx.getImageData(x,y,w,h),after=mctx.getImageData(x,y,w,h);
   sctx.putImageData(after,x,y);
-  hist.length=hi;hist.push({x,y,before,after});if(hist.length>60)hist.shift();hi=hist.length;syncBtns();
+  hist.length=hi;hist.push({x,y,before,after});if(hist.length>60)hist.shift();hi=hist.length;syncBtns();scheduleSave();
 }
-function undo(){if(hi<=0)return;exitFrame();const e=hist[--hi];if(e.resize)unResize(e);else{mctx.putImageData(e.before,e.x,e.y);sctx.putImageData(e.before,e.x,e.y);}syncBtns();}
-function redo(){if(hi>=hist.length)return;exitFrame();const e=hist[hi++];if(e.resize)doResize(e.l,e.t,e.r,e.b,false);else{mctx.putImageData(e.after,e.x,e.y);sctx.putImageData(e.after,e.x,e.y);}syncBtns();}
+function undo(){if(hi<=0)return;exitFrame();const e=hist[--hi];if(e.resize)unResize(e);else{mctx.putImageData(e.before,e.x,e.y);sctx.putImageData(e.before,e.x,e.y);}syncBtns();scheduleSave();}
+function redo(){if(hi>=hist.length)return;exitFrame();const e=hist[hi++];if(e.resize)doResize(e.l,e.t,e.r,e.b,false);else{mctx.putImageData(e.after,e.x,e.y);sctx.putImageData(e.after,e.x,e.y);}syncBtns();scheduleSave();}
 undoBtn.addEventListener('click',undo);redoBtn.addEventListener('click',redo);
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();}});
 
@@ -796,23 +807,8 @@ $('#copy').addEventListener('click',async()=>{
   catch(_){msg.textContent='ההעתקה לא זמינה כאן. לחיצה ארוכה על התמונה מאפשרת לשמור אותה.';}
 });
 
-/* ---------- starter drawing (example, not saved to history) ---------- */
-function demo(){
-  const vw=stage.clientWidth,vh=stage.clientHeight,m=Math.min(vw,vh);
-  const D=(id,color,size,pts)=>paintStroke(mctx,BR.find(b=>b.id===id),{...paint(color),size,opacity:1,smooth:1},pts);
-  D('airbrush','#ffb224',m*.2,path(t=>[vw*.78+Math.cos(t*18)*m*.07*t,vh*.2+Math.sin(t*18)*m*.07*t],120,()=>.8));
-  D('watercolor','#12a594',m*.12,path(t=>[vw*.04+t*vw*.92,vh*.76+Math.sin(t*5)*vh*.035],140,()=>.8));
-  D('watercolor','#30a46c',m*.09,path(t=>[vw*.04+t*vw*.92,vh*.8+Math.sin(t*5+1)*vh*.03],140,()=>.8));
-  D('ink','#5b4636',m*.035,path(t=>[vw*.22+Math.sin(t*3)*3,vh*.74-t*vh*.24],40,t=>.95-.45*t));
-  D('oil','#2f9e6a',m*.1,path(t=>[vw*.22+Math.cos(t*20)*m*.08*(1-t*.5),vh*.44+Math.sin(t*20)*m*.06*(1-t*.5)],160,()=>.8));
-  D('calligraphy','#14181c',m*.035,path(t=>[vw*.08+t*vw*.42,vh*.14+Math.sin(t*12)*vh*.04],140));
-  D('highlighter','#ffe066',m*.03,path(t=>[vw*.08+t*vw*.42,vh*.2],20,()=>.8));
-  D('confetti','#e5484d',m*.05,path(t=>[vw*.5+t*vw*.4,vh*.5-Math.sin(t*Math.PI)*vh*.1],26,()=>.8));
-  sctx.drawImage(main,0,0);
-}
-
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='10';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='11';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -829,15 +825,15 @@ function applyView(){
   world.style.transform=`translate(${vx}px,${vy}px) rotate(${va}deg) scale(${vz})`;
   const a=Math.round(wrapA(va)*10)/10;
   $('#viewBtn').textContent=Math.round(vz*100)+'%'+(Math.abs(a)>=.1?' · '+a+'°':'');
-  zm.value=Math.round(100*Math.log(vz/MINZ)/LZ);$('#zmOut').textContent=Math.round(vz*100)+'%';
+  zm.value=Math.round(100*Math.log(vz/MINZ)/LZ);$('#zmOut').textContent=Math.round(vz*100)+'%';viewChanged();
   if(document.activeElement!==angIn)angIn.value=a;
 }
 function viewAt(cx,cy,nz,na){const [px,py]=toPageS(cx,cy);vz=clamp(nz,MINZ,MAXZ);va=na;const [ox,oy]=rot(px*vz,py*vz,va);vx=cx-ox;vy=cy-oy;applyView();}
 const mid=()=>[stage.clientWidth/2,stage.clientHeight/2];
 function fitView(){
-  const sw=stage.clientWidth,sh=stage.clientHeight,c=Math.abs(Math.cos(va*RAD)),s=Math.abs(Math.sin(va*RAD)),bw=W*c+H*s,bh=W*s+H*c,m=24;
-  vz=clamp(Math.min((sw-2*m)/bw,(sh-2*m)/bh),MINZ,MAXZ);
-  const [ox,oy]=rot(W/2*vz,H/2*vz,va);vx=sw/2-ox;vy=sh/2-oy;applyView();
+  const sw=stage.clientWidth,sh=stage.clientHeight,c=Math.abs(Math.cos(va*RAD)),s=Math.abs(Math.sin(va*RAD)),bw=W*c+H*s,bh=W*s+H*c,m=24,ft=frameT()*2,top=56; // top: room for the tool bar
+  vz=clamp(Math.min((sw-2*m)/(bw+ft),(sh-2*m-top)/(bh+ft)),MINZ,MAXZ);
+  const [ox,oy]=rot(W/2*vz,H/2*vz,va);vx=sw/2-ox;vy=top+(sh-top)/2-oy;applyView();
 }
 function setPanel(o){vp.hidden=!o;if(o){setDrawer(false);exitFrame();}updateCloneUI();$('#viewBtn').setAttribute('aria-expanded',o?'true':'false');}
 $('#viewBtn').addEventListener('click',()=>setPanel(vp.hidden));
@@ -984,13 +980,14 @@ function setPageSize(nw,nh,snap,ox,oy){
   for(const c of [main,shadow]){c.width=pw;c.height=ph;c.getContext('2d').drawImage(snap,ox,oy);}
   live.width=pw;live.height=ph;
   main.style.width=live.style.width=nw+'px';main.style.height=live.style.height=nh+'px';
-  W=nw;H=nh;world.style.width=W+'px';world.style.height=H+'px';mctx.setTransform(DPR,0,0,DPR,0,0);lctx.setTransform(DPR,0,0,DPR,0,0);
+  W=nw;H=nh;world.style.width=W+'px';world.style.height=H+'px';mctx.setTransform(DPR,0,0,DPR,0,0);lctx.setTransform(DPR,0,0,DPR,0,0);updateFrameSize();
 }
 function doResize(l,t,r,b,push){
   const snap=document.createElement('canvas');snap.width=main.width;snap.height=main.height;snap.getContext('2d').drawImage(main,0,0);
   const entry={resize:true,l,t,r,b,snap,oW:W,oH:H,oFixed:pageFixed};
   setPageSize(r-l,b-t,snap,Math.round(-l*DPR),Math.round(-t*DPR));
   const [dx,dy]=rot(l*vz,t*vz,va);vx+=dx;vy+=dy;pageFixed=true;applyView();
+  scheduleSave();
   if(push){
     hist.length=hi;let k=-1;for(let i=hist.length-1;i>=0;i--)if(hist[i].resize){k=i;break;}
     if(k>=0)hist.splice(0,k+1); // only one full snapshot is kept, to save memory
@@ -999,7 +996,7 @@ function doResize(l,t,r,b,push){
 }
 function unResize(e){
   setPageSize(e.oW,e.oH,e.snap,0,0);
-  const [dx,dy]=rot(e.l*vz,e.t*vz,va);vx-=dx;vy-=dy;pageFixed=e.oFixed;applyView();
+  const [dx,dy]=rot(e.l*vz,e.t*vz,va);vx-=dx;vy-=dy;pageFixed=e.oFixed;applyView();scheduleSave();
 }
 $('#imgBtn').addEventListener('click',()=>{setDrawer(false);$('#imgIn').click();});
 $('#imgIn').addEventListener('change',async e=>{
@@ -1012,6 +1009,51 @@ $('#imgIn').addEventListener('change',async e=>{
     enterFrame('image',cv);
   }catch(_){hint.textContent='לא הצלחנו לפתוח את הקובץ הזה.';hint.hidden=false;}
 });
+
+/* ---------- wooden frame ---------- */
+const wf=$('#wf'),ish=$('#ish'),frameBtn=$('#frameBtn');
+let frameOn=true;try{frameOn=localStorage.getItem('frameOn')!=='0';}catch(_){}
+const rawFt=()=>clamp(Math.min(W,H)*.05,16,56),frameT=()=>frameOn?rawFt():0;
+function updateFrameSize(){world.style.setProperty('--ft',rawFt()+'px');}
+function setFrame(o,keep){frameOn=o;wf.hidden=ish.hidden=!o;frameBtn.setAttribute('aria-pressed',o?'true':'false');if(keep)try{localStorage.setItem('frameOn',o?'1':'0');}catch(_){}}
+frameBtn.addEventListener('click',()=>setFrame(!frameOn,true));
+setFrame(frameOn,false);
+
+/* ---------- autosave: the drawing comes back after a crash or accidental close ---------- */
+const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open('brush-studio',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});
+async function idbGet(k){const db=await idb();return new Promise((res,rej)=>{const q=db.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error);});}
+async function idbSet(k,v){const db=await idb();return new Promise((res,rej)=>{const t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=()=>res();t.onerror=()=>rej(t.error);});}
+let saveT=0,restoring=true;
+function scheduleSave(){if(restoring)return;clearTimeout(saveT);saveT=setTimeout(()=>saveNow().catch(()=>{}),900);}
+async function saveNow(){
+  if(restoring||!W)return;clearTimeout(saveT);saveT=0;
+  const blob=await new Promise(res=>main.toBlob(res,'image/png'));if(!blob)return;
+  await idbSet('doc',{blob,w:W,h:H,dpr:DPR,paper:app.dataset.paper,fixed:pageFixed,view:{vx,vy,vz,va},color:st.color,brush:lastDrawBrush.id,size:st.size});
+}
+let viewT=0;
+function viewChanged(){if(restoring)return;clearTimeout(viewT);viewT=setTimeout(scheduleSave,1500);}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveNow().catch(()=>{});});
+addEventListener('pagehide',()=>{saveNow().catch(()=>{});});
+async function restore(){
+  try{
+    const d=await idbGet('doc');
+    if(d&&d.blob&&!hist.length&&d.w>0&&d.h>0){
+      const bmp=await createImageBitmap(d.blob),t=document.createElement('canvas');t.width=t.height=1;
+      setPageSize(d.w,d.h,t,0,0);
+      mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.drawImage(bmp,0,0,main.width,main.height);mctx.restore();
+      if(bmp.close)bmp.close();
+      shadow.getContext('2d').drawImage(main,0,0);
+      pageFixed=!!d.fixed;app.dataset.paper=d.paper==='dark'?'dark':'light';
+      if(d.view&&[d.view.vx,d.view.vy,d.view.vz,d.view.va].every(Number.isFinite)){vx=d.view.vx;vy=d.view.vy;vz=d.view.vz;va=d.view.va;}
+      applyView();
+      const b=BR.find(x=>x.id===d.brush);if(b&&!b.pick)selectBrush(b);
+      if(Number.isFinite(d.size)&&d.size>=1&&d.size<=120){st.size=cur.size=d.size;$('#size').value=d.size;$('#sizeOut').textContent=d.size;}
+      if(/^#[0-9a-f]{6}$/i.test(d.color||''))setColor(d.color);
+      hideHint();queuePreviews();
+    }
+  }catch(_){}
+  restoring=false;
+}
 
 /* ---------- feedback ---------- */
 const FEEDBACK_URL='https://brush-feedback.ofer-bechor.workers.dev';
@@ -1075,13 +1117,13 @@ fbSend.addEventListener('click',async()=>{
   fbSend.disabled=false;
 });
 
-syncCp();fit();renderPreviews();syncBtns();
+syncCp();fit();renderPreviews();syncBtns();restore();
 
 /* ---------- install + updates ---------- */
 if('serviceWorker' in navigator){
   addEventListener('load',()=>{
     navigator.serviceWorker.register('sw.js').then(reg=>{
-      const offer=w=>{$('#upd').hidden=false;$('#updGo').onclick=()=>w.postMessage('SKIP_WAITING');};
+      const offer=w=>{$('#upd').hidden=false;$('#updGo').onclick=async()=>{try{await saveNow();}catch(_){}w.postMessage('SKIP_WAITING');};};
       if(reg.waiting&&navigator.serviceWorker.controller)offer(reg.waiting);
       reg.addEventListener('updatefound',()=>{const w=reg.installing;if(!w)return;
         w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)offer(w);});});
