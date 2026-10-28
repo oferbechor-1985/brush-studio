@@ -410,6 +410,16 @@ function softBlend(c,S,sx,sy,a){
   c.globalCompositeOperation='lighter';c.globalAlpha=a;c.drawImage(S.cv,0,0);
   c.restore();
 }
+/* where the patch hangs over the page edge, repeat the edge pixels instead of blurring in empty space */
+function padEdges(U,sx,sy,d,cw,ch){
+  const x0=Math.max(0,sx)-sx,x1=Math.min(cw,sx+d)-sx,y0=Math.max(0,sy)-sy,y1=Math.min(ch,sy+d)-sy,c=U.c,v=U.cv;
+  if(x1<=x0||y1<=y0)return;
+  c.globalCompositeOperation='source-over';c.globalAlpha=1;
+  if(x0>0)c.drawImage(v,x0,0,1,d,0,0,x0,d);
+  if(x1<d)c.drawImage(v,x1-1,0,1,d,x1,0,d-x1,d);
+  if(y0>0)c.drawImage(v,0,y0,d,1,0,0,d,y0);
+  if(y1<d)c.drawImage(v,0,y1-1,d,1,0,y1,d,d-y1);
+}
 class Stroke{
   constructor(b,ctx,s){this.b=b;this.c=ctx;this.s=s;this.last=null;this.sx=0;this.sy=0;this.carry=0;this.box=[1e9,1e9,-1e9,-1e9];
     this.rs=b.init?b.init(s):null;if(b.erase)ctx.globalCompositeOperation='destination-out';}
@@ -442,6 +452,7 @@ class Stroke{
     const f=this.fx||(this.fx={U:mkc(d,sharp),S:mkc(d,sharp),T1:mkc(Math.max(2,d>>1)),T2:mkc(Math.max(2,d>>2))});
     const U=f.U,S=f.S,t1=f.T1,t2=f.T2,n1=t1.cv.width,n2=t2.cv.width;
     U.c.globalCompositeOperation='copy';U.c.drawImage(c.canvas,sx,sy,d,d,0,0,d,d);
+    padEdges(U,sx,sy,d,c.canvas.width,c.canvas.height);
     t1.c.globalCompositeOperation='copy';t1.c.drawImage(U.cv,0,0,d,d,0,0,n1,n1);
     t2.c.globalCompositeOperation='copy';t2.c.drawImage(t1.cv,0,0,n1,n1,0,0,n2,n2);
     S.c.globalCompositeOperation='copy';S.c.drawImage(t2.cv,0,0,n2,n2,0,0,d,d);
@@ -801,7 +812,7 @@ function demo(){
 }
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='9';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='10';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
