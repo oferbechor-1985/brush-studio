@@ -79,7 +79,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 
 .sheet{position:fixed;inset:0;z-index:20;background:rgba(10,12,14,.66);display:flex;align-items:center;justify-content:center;padding:16px}
 .card{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:14px;padding:14px;max-width:min(560px,100%);max-height:100%;display:flex;flex-direction:column;gap:10px;overflow:auto}
-.card img{max-width:100%;max-height:60vh;object-fit:contain;border-radius:8px;border:1px solid var(--line);background:#fff;-webkit-touch-callout:default;user-select:auto;-webkit-user-select:auto}
+.card img{max-width:100%;max-height:60vh;object-fit:contain;border-radius:8px;border:1px solid var(--line);background:#0E1113;-webkit-touch-callout:default;user-select:auto;-webkit-user-select:auto}
 .card p{margin:0;font-size:13px;color:var(--muted);text-wrap:balance}
 .card .row{display:flex;gap:8px;flex-wrap:wrap}
 
@@ -783,7 +783,7 @@ $('#save').addEventListener('click',()=>{
   lastCv=t;out.src=t.toDataURL('image/png');blobPromise=new Promise(res=>t.toBlob(res,'image/png'));
   msg.textContent='"שמור כקובץ" מוריד את הציור לתיקיית ההורדות. אפשר גם ללחוץ לחיצה ארוכה על התמונה.';sheet.hidden=false;$('#close').focus();
 });
-const stamp=()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return `drawing-${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;};
+const stamp=()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return `paint ${p(d.getDate())}${p(d.getMonth()+1)}${p(d.getFullYear()%100)}_${p(d.getHours())}${p(d.getMinutes())}`;};
 async function saveFile(type){
   if(!lastCv)return;
   const blob=await new Promise(res=>lastCv.toBlob(res,type,.92));
@@ -808,7 +808,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='11';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='12';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
