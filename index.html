@@ -9,7 +9,7 @@
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <style>html{color-scheme:light dark}body{margin:0}[hidden]{display:none!important}</style>
-<title>סטודיו המברשות</title>
+<title>OBPaint</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&family=Secular+One&family=DM+Mono:wght@400;500&display=swap">
@@ -206,7 +206,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 
   <aside class="drawer" id="drawer" aria-label="אפשרויות ציור">
     <div class="dhead">
-      <h1>סטודיו המברשות</h1>
+      <h1 dir="ltr">OBPaint</h1>
       <button class="btn" id="dclose" aria-label="סגור אפשרויות"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <section><h2>מברשות</h2><nav class="brushes" id="brushes" aria-label="מברשות"></nav></section>
@@ -777,11 +777,17 @@ stage.addEventListener('wheel',e=>{e.preventDefault();const r=srect();viewAt(e.c
 const sheet=$('#sheet'),out=$('#out'),msg=$('#sheetMsg');let blobPromise=null;
 let lastCv=null;
 $('#save').addEventListener('click',()=>{
-  const w=main.width,h=main.height;
-  const t=document.createElement('canvas');t.width=w;t.height=h;const c=t.getContext('2d');
-  c.fillStyle=getComputedStyle(app).getPropertyValue('--paper-cur').trim()||'#fff';c.fillRect(0,0,w,h);c.drawImage(main,0,0);
+  const paperC=getComputedStyle(app).getPropertyValue('--paper-cur').trim()||'#fff';
+  let t,c;
+  if(frameOn){ // the wooden frame and its inner shadow are part of the picture
+    const ft=rawFt();t=document.createElement('canvas');t.width=Math.round((W+2*ft)*DPR);t.height=Math.round((H+2*ft)*DPR);
+    c=t.getContext('2d');c.scale(DPR,DPR);c.fillStyle=paperC;c.fillRect(ft,ft,W,H);c.drawImage(main,ft,ft,W,H);paintFrame(c,W,H,ft,DPR);
+  }else{
+    t=document.createElement('canvas');t.width=main.width;t.height=main.height;c=t.getContext('2d');
+    c.fillStyle=paperC;c.fillRect(0,0,t.width,t.height);c.drawImage(main,0,0);
+  }
   lastCv=t;out.src=t.toDataURL('image/png');blobPromise=new Promise(res=>t.toBlob(res,'image/png'));
-  msg.textContent='"שמור כקובץ" מוריד את הציור לתיקיית ההורדות. אפשר גם ללחוץ לחיצה ארוכה על התמונה.';sheet.hidden=false;$('#close').focus();
+  msg.textContent='"שמור כקובץ" מוריד את הציור לתיקיית ההורדות.'+(frameOn?' הציור נשמר עם המסגרת. אפשר לכבות אותה בתפריט, "מסגרת".':'');sheet.hidden=false;$('#close').focus();
 });
 const stamp=()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return `paint ${p(d.getDate())}${p(d.getMonth()+1)}${p(d.getFullYear()%100)}_${p(d.getHours())}${p(d.getMinutes())}`;};
 async function saveFile(type){
@@ -808,7 +814,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='12';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='13';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1018,6 +1024,30 @@ function updateFrameSize(){world.style.setProperty('--ft',rawFt()+'px');}
 function setFrame(o,keep){frameOn=o;wf.hidden=ish.hidden=!o;frameBtn.setAttribute('aria-pressed',o?'true':'false');if(keep)try{localStorage.setItem('frameOn',o?'1':'0');}catch(_){}}
 frameBtn.addEventListener('click',()=>setFrame(!frameOn,true));
 setFrame(frameOn,false);
+
+/* draws the wooden frame (same look as the on-screen one) around a W x H page placed at (ft,ft); k = canvas scale, for shadows */
+function paintFrame(c,W,H,ft,k){
+  const TW=W+2*ft,TH=H+2*ft;
+  c.save();c.beginPath();c.rect(ft,ft,W,H);c.clip();c.fillStyle='#000';
+  const ring=()=>{c.beginPath();c.rect(-TW,-TH,TW*3,TH*3);c.rect(ft,ft,W,H);};
+  ring();c.shadowColor='rgba(45,28,6,.55)';c.shadowBlur=ft*1.1*k;c.shadowOffsetX=ft*.12*k;c.shadowOffsetY=ft*.2*k;c.fill('evenodd');
+  ring();c.shadowColor='rgba(45,28,6,.28)';c.shadowBlur=ft*.8*k;c.shadowOffsetX=0;c.shadowOffsetY=0;c.fill('evenodd');
+  c.restore();
+  const g=(x0,y0,x1,y1,a,b)=>{const q=c.createLinearGradient(x0,y0,x1,y1);q.addColorStop(0,a);q.addColorStop(1,b);return q;};
+  const piece=(pts,grad,vertical)=>{
+    c.save();c.beginPath();pts.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.clip();
+    c.fillStyle=grad;c.fillRect(0,0,TW,TH);c.fillStyle='rgba(110,70,25,.07)';
+    if(vertical)for(let x=0;x<TW;x+=6)c.fillRect(x,0,1,TH);else for(let y=0;y<TH;y+=6)c.fillRect(0,y,TW,1);
+    c.restore();
+  };
+  piece([[0,0],[TW,0],[TW-ft,ft],[ft,ft]],g(0,0,0,ft,'#efd7ae','#dfc08f'),false);
+  piece([[0,TH],[TW,TH],[TW-ft,TH-ft],[ft,TH-ft]],g(0,TH-ft,0,TH,'#c9a673','#b58d5a'),false);
+  piece([[0,0],[ft,ft],[ft,TH-ft],[0,TH]],g(0,0,ft,0,'#e0c293','#d2b180'),true);
+  piece([[TW,0],[TW,TH],[TW-ft,TH-ft],[TW-ft,ft]],g(TW-ft,0,TW,0,'#c19d6a','#b08855'),true);
+  c.lineWidth=1;c.strokeStyle='rgba(255,240,210,.55)';c.strokeRect(.5,.5,TW-1,TH-1);
+  c.lineWidth=3;c.strokeStyle='rgba(255,235,200,.22)';c.strokeRect(ft-1.5,ft-1.5,W+3,H+3);
+  c.lineWidth=1.5;c.strokeStyle='rgba(70,45,15,.65)';c.strokeRect(ft-.75,ft-.75,W+1.5,H+1.5);
+}
 
 /* ---------- autosave: the drawing comes back after a crash or accidental close ---------- */
 const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open('brush-studio',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});

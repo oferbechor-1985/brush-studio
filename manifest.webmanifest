@@ -1,6 +1,6 @@
 {
-  "name": "סטודיו המברשות",
-  "short_name": "המברשות",
+  "name": "OBPaint",
+  "short_name": "OBPaint",
   "lang": "he",
   "dir": "rtl",
   "start_url": "./index.html",

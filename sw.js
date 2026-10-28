@@ -1,5 +1,5 @@
 // Bump VERSION on every release: the new worker installs in the background and the app offers "update now".
-const VERSION = 'v12';
+const VERSION = 'v13';
 const CACHE = 'brush-studio-' + VERSION;
 const FILES = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png'];
 
