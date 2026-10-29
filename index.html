@@ -358,9 +358,13 @@ const BR=[
   dab(c,p){c.fillStyle=p.color;c.fillRect(p.x-p.s*.2,p.y-p.s*.5,p.s*.4,p.s);}},
  {id:'calligraphy',name:'קליגרפיה',size:18,pv:16,sp:.05,layered:true,
   dab(c,p){c.fillStyle=p.color;c.beginPath();c.ellipse(p.x,p.y,Math.max(.8,p.s*.5*(.6+.4*p.pr)),Math.max(.6,p.s*.1),-.7,0,TAU);c.fill();}},
- {id:'oil',name:'שמן',size:40,pv:20,sp:.1,
-  init(s){const a=[];for(let i=0;i<18;i++){const t=R()*TAU,d=Math.sqrt(R())*.5;a.push({ox:Math.cos(t)*d,oy:Math.sin(t)*d,r:.045+R()*.06,col:css(...shade(s.rgb,(R()-.5)*.3)),a:.55+R()*.4});}return a;},
-  dab(c,p,rs){const k=.5+.5*p.pr;for(const b of rs){c.globalAlpha=p.base*b.a;c.fillStyle=b.col;c.beginPath();c.arc(p.x+b.ox*p.s*k,p.y+b.oy*p.s*k,Math.max(.6,b.r*p.s),0,TAU);c.fill();}}},
+ {id:'oil',name:'שמן',size:40,pv:20,sp:.06,layered:true,
+  init(s){const a=[];for(let i=0;i<18;i++){const t=R()*TAU,d=Math.sqrt(R())*.5;a.push({ox:Math.cos(t)*d,oy:Math.sin(t)*d,r:.06+R()*.07,col:css(...shade(s.rgb,(R()-.5)*.3))});}return a;},
+  /* every bristle is a continuous line from its last position, so big strokes stay smooth instead of showing dots */
+  dab(c,p,rs){const k=.5+.5*p.pr;c.lineCap='round';c.lineJoin='round';
+    for(const b of rs){const x=p.x+b.ox*p.s*k,y=p.y+b.oy*p.s*k,w=Math.max(1,b.r*2*p.s);c.fillStyle=c.strokeStyle=b.col;c.lineWidth=w;c.beginPath();
+      if(b.lx===undefined){c.arc(x,y,w/2,0,TAU);c.fill();}else{c.moveTo(b.lx,b.ly);c.lineTo(x,y);c.stroke();}
+      b.lx=x;b.ly=y;}}},
  {id:'watercolor',name:'צבעי מים',size:44,pv:22,sp:.15,pad:1.4,
   dab(c,p){const r=p.s*.6*(.6+.5*p.pr);c.fillStyle=p.color;c.strokeStyle=p.color;
     for(let k=0;k<2;k++){c.globalAlpha=p.base*.05;c.beginPath();c.arc(p.x+(R()-.5)*r*.5,p.y+(R()-.5)*r*.5,r*(.8+R()*.4),0,TAU);c.fill();}
@@ -846,7 +850,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='14';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='15';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
