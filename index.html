@@ -722,14 +722,14 @@ function devRect(box){
 /* blends the colours inside a finished stroke (smooth paint) while its outline keeps the original shape and sharpness */
 function softenLive(box,size){
   const m=size*.1+4,r=devRect([box[0]-m,box[1]-m,box[2]+m,box[3]+m]);if(!r)return;
-  const rad=Math.max(1.5,size*DPR*.12);
+  const rad=Math.max(1.5,size*DPR*.075);
   const src=document.createElement('canvas');src.width=r.w;src.height=r.h;const sc=src.getContext('2d',{willReadFrequently:true});sc.drawImage(live,r.x,r.y,r.w,r.h,0,0,r.w,r.h);
   const bl=document.createElement('canvas');bl.width=r.w;bl.height=r.h;const bc=bl.getContext('2d',{willReadFrequently:true});
   if('filter' in bc){bc.filter='blur('+rad+'px)';bc.drawImage(src,0,0);bc.filter='none';}
   else{let cw=r.w,ch=r.h,from=src;const f=Math.max(2,Math.round(rad/2));
     const sm=document.createElement('canvas');sm.width=Math.max(1,Math.round(r.w/f));sm.height=Math.max(1,Math.round(r.h/f));sm.getContext('2d').drawImage(src,0,0,sm.width,sm.height);bc.drawImage(sm,0,0,r.w,r.h);}
   const o=sc.getImageData(0,0,r.w,r.h),b=bc.getImageData(0,0,r.w,r.h),od=o.data,bd=b.data; // getImageData is un-premultiplied: the blurred colour of what is inside the stroke
-  for(let i=0;i<od.length;i+=4){if(!od[i+3]||bd[i+3]<8)continue;od[i]=od[i]*.1+bd[i]*.9;od[i+1]=od[i+1]*.1+bd[i+1]*.9;od[i+2]=od[i+2]*.1+bd[i+2]*.9;}
+  for(let i=0;i<od.length;i+=4){if(!od[i+3]||bd[i+3]<8)continue;od[i]=od[i]*.25+bd[i]*.75;od[i+1]=od[i+1]*.25+bd[i+1]*.75;od[i+2]=od[i+2]*.25+bd[i+2]*.75;}
   lctx.save();lctx.setTransform(1,0,0,1,0,0);lctx.putImageData(o,r.x,r.y);lctx.restore();
 }
 function cancelStroke(){
@@ -864,7 +864,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='16';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='17';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
