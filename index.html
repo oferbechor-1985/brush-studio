@@ -358,8 +358,8 @@ const BR=[
   dab(c,p){c.fillStyle=p.color;c.fillRect(p.x-p.s*.2,p.y-p.s*.5,p.s*.4,p.s);}},
  {id:'calligraphy',name:'קליגרפיה',size:18,pv:16,sp:.05,layered:true,
   dab(c,p){c.fillStyle=p.color;c.beginPath();c.ellipse(p.x,p.y,Math.max(.8,p.s*.5*(.6+.4*p.pr)),Math.max(.6,p.s*.1),-.7,0,TAU);c.fill();}},
- {id:'oil',name:'שמן',size:40,pv:20,sp:.06,layered:true,
-  init(s){const a=[];for(let i=0;i<18;i++){const t=R()*TAU,d=Math.sqrt(R())*.5;a.push({ox:Math.cos(t)*d,oy:Math.sin(t)*d,r:.06+R()*.07,col:css(...shade(s.rgb,(R()-.5)*.3))});}return a;},
+ {id:'oil',name:'שמן',size:40,pv:20,sp:.06,layered:true,soften:true,
+  init(s){const a=[];for(let i=0;i<34;i++){const t=i*2.399963+R()*.5,d=Math.sqrt((i+.5)/34)*.5;a.push({ox:Math.cos(t)*d,oy:Math.sin(t)*d,r:.07+R()*.06,col:css(...shade(s.rgb,(R()-.5)*.3))});}return a;},
   /* every bristle is a continuous line from its last position, so big strokes stay smooth instead of showing dots */
   dab(c,p,rs){const k=.5+.5*p.pr;c.lineCap='round';c.lineJoin='round';
     for(const b of rs){const x=p.x+b.ox*p.s*k,y=p.y+b.oy*p.s*k,w=Math.max(1,b.r*2*p.s);c.fillStyle=c.strokeStyle=b.col;c.lineWidth=w;c.beginPath();
@@ -719,6 +719,19 @@ function devRect(box){
   const x1=Math.min(main.width,Math.ceil(box[2]*DPR)),y1=Math.min(main.height,Math.ceil(box[3]*DPR));
   return x1>x&&y1>y?{x,y,w:x1-x,h:y1-y}:null;
 }
+/* blends the colours inside a finished stroke (smooth paint) while its outline keeps the original shape and sharpness */
+function softenLive(box,size){
+  const m=size*.1+4,r=devRect([box[0]-m,box[1]-m,box[2]+m,box[3]+m]);if(!r)return;
+  const rad=Math.max(1.5,size*DPR*.12);
+  const src=document.createElement('canvas');src.width=r.w;src.height=r.h;const sc=src.getContext('2d',{willReadFrequently:true});sc.drawImage(live,r.x,r.y,r.w,r.h,0,0,r.w,r.h);
+  const bl=document.createElement('canvas');bl.width=r.w;bl.height=r.h;const bc=bl.getContext('2d',{willReadFrequently:true});
+  if('filter' in bc){bc.filter='blur('+rad+'px)';bc.drawImage(src,0,0);bc.filter='none';}
+  else{let cw=r.w,ch=r.h,from=src;const f=Math.max(2,Math.round(rad/2));
+    const sm=document.createElement('canvas');sm.width=Math.max(1,Math.round(r.w/f));sm.height=Math.max(1,Math.round(r.h/f));sm.getContext('2d').drawImage(src,0,0,sm.width,sm.height);bc.drawImage(sm,0,0,r.w,r.h);}
+  const o=sc.getImageData(0,0,r.w,r.h),b=bc.getImageData(0,0,r.w,r.h),od=o.data,bd=b.data; // getImageData is un-premultiplied: the blurred colour of what is inside the stroke
+  for(let i=0;i<od.length;i+=4){if(!od[i+3]||bd[i+3]<8)continue;od[i]=od[i]*.1+bd[i]*.9;od[i+1]=od[i+1]*.1+bd[i+1]*.9;od[i+2]=od[i+2]*.1+bd[i+2]*.9;}
+  lctx.save();lctx.setTransform(1,0,0,1,0,0);lctx.putImageData(o,r.x,r.y);lctx.restore();
+}
 function cancelStroke(){
   if(!act)return;const a=act;act=null;
   if(a.pick){loupe.hidden=true;return;}
@@ -801,6 +814,7 @@ function end(e){
   const box=a.stroke.finish(a.x,a.y,a.pr);
   if(a.b.layered){
     mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalAlpha=st.opacity*(a.b.alpha||1);mctx.globalCompositeOperation=a.b.cb||'source-over';
+    if(a.b.soften)softenLive(box,a.stroke.s.size*(a.b.mul||1));
     mctx.drawImage(live,0,0);mctx.restore();lctx.clearRect(0,0,W,H);
   }
   commitPatch(box);
@@ -850,7 +864,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='15';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='16';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
