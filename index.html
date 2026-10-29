@@ -155,6 +155,18 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 #wf::before{content:"";position:absolute;inset:0;z-index:1;box-shadow:inset 0 0 0 calc(1px*var(--iz,1)) rgba(255,240,210,.55)}
 #wf::after{content:"";position:absolute;inset:var(--ft,28px);z-index:1;box-shadow:0 0 0 calc(1.5px*var(--iz,1)) rgba(70,45,15,.65),0 0 0 calc(3px*var(--iz,1)) rgba(255,235,200,.22)}
 .actions .btn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.lp{max-height:70vh}
+.lhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.llist{display:flex;flex-direction:column;gap:6px;max-height:34vh;overflow:auto;padding:2px}
+.lrow{display:grid;grid-template-columns:44px minmax(0,1fr) 92px 40px;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:2px 6px 2px 2px}
+.lrow[aria-current="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.lname{appearance:none;background:none;border:0;color:var(--fg);font:500 14px var(--f-ui);min-height:44px;padding:0 6px;text-align:start;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.lop{width:100%;min-width:0;accent-color:var(--accent);min-height:44px}
+.lrow output{font:500 11px var(--f-mono);text-align:end}
+.leye{padding:0;min-width:40px;min-height:40px}.leye[aria-pressed="false"]{opacity:.45}
+.lacts{display:flex;flex-wrap:wrap;gap:6px}
+.lacts .btn{min-width:44px;padding:0 10px}
+#lMsg{margin:0;min-height:1.2em;font-size:12px;color:var(--muted)}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -172,6 +184,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
     <button class="btn" id="undo" aria-label="בטל" title="בטל (Ctrl+Z)" disabled><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
     <button class="btn" id="redo" aria-label="החזר" title="החזר (Ctrl+Shift+Z)" disabled><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
     <button class="btn" id="hand" aria-label="זכוכית מגדלת" aria-pressed="false" title="זכוכית מגדלת: גרירה בעט או באצבע מזיזה את הציור. צביטה בשתי אצבעות מגדילה תמיד."><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5M8 10.5h5M10.5 8v5"/></svg></button>
+    <button class="btn" id="layersBtn" aria-expanded="false" aria-controls="lp" aria-label="שכבות" title="שכבות"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg></button>
     <button class="btn" id="viewBtn" aria-expanded="false" aria-controls="vp" title="זום וסיבוב" style="font:500 12px var(--f-mono);min-width:64px">100%</button>
   </div>
 
@@ -196,6 +209,20 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
     </div>
   </div>
 
+  <div class="vpanel lp" id="lp" hidden role="group" aria-label="שכבות">
+    <div class="lhead"><strong>שכבות</strong><button class="btn" id="lClose">סגור</button></div>
+    <div class="llist" id="llist"></div>
+    <div class="lacts">
+      <button class="btn" id="lAdd">+ שכבה</button>
+      <button class="btn" id="lDup">שכפל</button>
+      <button class="btn" id="lMerge">מזג למטה</button>
+      <button class="btn" id="lUp" aria-label="הזז שכבה למעלה">▲</button>
+      <button class="btn" id="lDown" aria-label="הזז שכבה למטה">▼</button>
+      <button class="btn" id="lRen">שם</button>
+      <button class="btn" id="lDel">מחק</button>
+    </div>
+    <p id="lMsg"></p>
+  </div>
   <div class="vpanel" id="pf" hidden role="group" aria-label="גודל הדף">
     <div class="vrow"><strong id="pfInfo" dir="ltr" style="font:500 14px var(--f-mono)"></strong></div>
     <div class="vrow"><span id="pfHelp" style="font-size:12px;color:var(--muted)"></span></div>
@@ -516,25 +543,27 @@ function paintStroke(dst,b,s,pts){
 function path(fn,n,prf){const a=[];for(let i=0;i<=n;i++){const t=i/n,q=fn(t);a.push([q[0],q[1],prf?prf(t):.35+.65*Math.sin(Math.PI*t)]);}return a;}
 
 /* ---------- canvases ---------- */
-const stage=$('#stage'),main=$('#main'),live=$('#live'),app=$('#app');
-const mctx=main.getContext('2d'),lctx=live.getContext('2d');
+const stage=$('#stage'),live=$('#live'),app=$('#app');
+const lctx=live.getContext('2d');
 const shadow=document.createElement('canvas'),sctx=shadow.getContext('2d',{willReadFrequently:true});
 let W=0,H=0,demoDone=false;
 let pageFixed=false;
+/* layers: layers[0] is the bottom one. main / mctx always point at the active layer; shadow holds the committed state of the active layer */
+const layers=[];let active=null,main=null,mctx=null,layerSeq=0;
+const MAXL=10,MAXLPX=24e6;
+function newLayer(cv){cv=cv||document.createElement('canvas');return {id:++layerSeq,name:'שכבה '+layerSeq,visible:true,opacity:1,cv,ctx:cv.getContext('2d')};}
+function sizeLayer(L,pw,ph,nw,nh){L.cv.width=pw;L.cv.height=ph;L.cv.style.width=nw+'px';L.cv.style.height=nh+'px';L.ctx.setTransform(DPR,0,0,DPR,0,0);}
+function styleLayer(L){L.cv.style.display=L.visible?'':'none';L.cv.style.opacity=L.opacity<1?String(L.opacity):'';}
+function relayer(){const anchor=$('#ish');for(const L of layers)world.insertBefore(L.cv,anchor);world.insertBefore(live,active.cv.nextSibling);}
+function setActive(L){active=L;main=L.cv;mctx=L.ctx;sctx.clearRect(0,0,shadow.width,shadow.height);sctx.drawImage(L.cv,0,0);relayer();renderLayersUI();}
+{const L0=newLayer($('#main'));layers.push(L0);active=L0;main=L0.cv;mctx=L0.ctx;}
+function copyCv(cv){const t=document.createElement('canvas');t.width=cv.width;t.height=cv.height;t.getContext('2d').drawImage(cv,0,0);return t;}
 function fit(){
   if(pageFixed)return;
   const r=stage.getBoundingClientRect();
   const nw=Math.max(W,Math.ceil(r.width)),nh=Math.max(H,Math.ceil(r.height));
   if(nw<=0||nh<=0||(nw===W&&nh===H))return;
-  const pw=Math.round(nw*DPR),ph=Math.round(nh*DPR);
-  for(const c of [main,shadow]){
-    let tmp=null;
-    if(c.width>0&&c.height>0){tmp=document.createElement('canvas');tmp.width=c.width;tmp.height=c.height;tmp.getContext('2d').drawImage(c,0,0);}
-    c.width=pw;c.height=ph;if(tmp)c.getContext('2d').drawImage(tmp,0,0);
-  }
-  live.width=pw;live.height=ph;
-  main.style.width=live.style.width=nw+'px';main.style.height=live.style.height=nh+'px';
-  W=nw;H=nh;world.style.width=W+'px';world.style.height=H+'px';mctx.setTransform(DPR,0,0,DPR,0,0);lctx.setTransform(DPR,0,0,DPR,0,0);updateFrameSize();
+  setPageSize(nw,nh,W?layers.map(L=>({L,snap:copyCv(L.cv)})):[],0,0);
   if(!demoDone){demoDone=true;fitView();}
   applyView();
 }
@@ -573,7 +602,7 @@ let framing=null,lastDrawBrush=BR[0],cloneSrc=null,cloneOff=null,cloneArm=false;
 const pill=$('#pill'),pillTxt=$('#pillTxt'),pillBtn=$('#pillBtn'),cmark=$('#cmark'),loupe=$('#loupe');
 function moveMark(x,y){cloneSrc&&(cmark.hidden=false);Object.assign(cmark.style,{left:x+'px',top:y+'px',width:st.size+'px',height:st.size+'px'});}
 function updateCloneUI(){
-  const on=cur.clone&&!drawerOpen&&$('#vp').hidden&&!framing,need=!cloneSrc||cloneArm;
+  const on=cur.clone&&!drawerOpen&&$('#vp').hidden&&$('#lp').hidden&&!framing,need=!cloneSrc||cloneArm;
   pill.hidden=!on;pillTxt.textContent=need?'הקישו על האזור שרוצים לשכפל ממנו':'משכפלים מהנקודה המסומנת';pillBtn.hidden=need;
   if(!cur.clone||!cloneSrc)cmark.hidden=true;
 }
@@ -629,7 +658,7 @@ $('#palm').addEventListener('change',e=>{st.palm=e.target.checked;});
 /* ---------- options drawer ---------- */
 const drawer=$('#drawer'),menu=$('#menu');let drawerOpen=false;
 function setDrawer(o){drawerOpen=o;drawer.classList.toggle('open',o);menu.setAttribute('aria-expanded',o?'true':'false');drawer.inert=!o;updateCloneUI();}
-menu.addEventListener('click',()=>{setPanel(false);setDrawer(!drawerOpen);});
+menu.addEventListener('click',()=>{setPanel(false);setLayersPanel(false);setDrawer(!drawerOpen);});
 $('#dclose').addEventListener('click',()=>setDrawer(false));
 addEventListener('keydown',e=>{if(e.key==='Escape'){setDrawer(false);exitFrame();}});
 setDrawer(false);
@@ -645,10 +674,11 @@ function commitPatch(box){
   const w=x1-x,h=y1-y;if(w<=0||h<=0)return;
   const before=sctx.getImageData(x,y,w,h),after=mctx.getImageData(x,y,w,h);
   sctx.putImageData(after,x,y);
-  hist.length=hi;hist.push({x,y,before,after});if(hist.length>60)hist.shift();hi=hist.length;syncBtns();scheduleSave();
+  pushHist({x,y,before,after,layer:active});
 }
-function undo(){if(hi<=0)return;exitFrame();const e=hist[--hi];if(e.resize)unResize(e);else{mctx.putImageData(e.before,e.x,e.y);sctx.putImageData(e.before,e.x,e.y);}syncBtns();scheduleSave();}
-function redo(){if(hi>=hist.length)return;exitFrame();const e=hist[hi++];if(e.resize)doResize(e.l,e.t,e.r,e.b,false);else{mctx.putImageData(e.after,e.x,e.y);sctx.putImageData(e.after,e.x,e.y);}syncBtns();scheduleSave();}
+function pushHist(e){hist.length=hi;hist.push(e);if(hist.length>60)hist.shift();hi=hist.length;syncBtns();scheduleSave();}
+function undo(){if(hi<=0)return;exitFrame();const e=hist[--hi];if(e.resize)unResize(e);else if(e.layerOp)layerUndo(e);else if(layers.includes(e.layer)){if(e.layer!==active)setActive(e.layer);mctx.putImageData(e.before,e.x,e.y);sctx.putImageData(e.before,e.x,e.y);}syncBtns();scheduleSave();}
+function redo(){if(hi>=hist.length)return;exitFrame();const e=hist[hi++];if(e.resize)doResize(e.l,e.t,e.r,e.b,false);else if(e.layerOp)layerRedo(e);else if(layers.includes(e.layer)){if(e.layer!==active)setActive(e.layer);mctx.putImageData(e.after,e.x,e.y);sctx.putImageData(e.after,e.x,e.y);}syncBtns();scheduleSave();}
 undoBtn.addEventListener('click',undo);redoBtn.addEventListener('click',redo);
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();}});
 
@@ -657,7 +687,8 @@ clearBtn.addEventListener('click',()=>{
   if(!clearTimer){clearTxt.textContent='לחצו שוב';clearBtn.classList.add('warn');clearTimer=setTimeout(resetClear,2500);return;}
   resetClear();mctx.clearRect(0,0,W,H);commitPatch([0,0,W,H]);hideHint();
 });
-function resetClear(){clearTimeout(clearTimer);clearTimer=0;clearTxt.textContent='נקה';clearBtn.classList.remove('warn');}
+const clearLabel=()=>layers.length>1?'נקה שכבה':'נקה';
+function resetClear(){clearTimeout(clearTimer);clearTimer=0;clearTxt.textContent=clearLabel();clearBtn.classList.remove('warn');}
 const hint=$('#hint');function hideHint(){hint.hidden=true;}
 
 /* ---------- drawing input ---------- */
@@ -702,7 +733,7 @@ stage.addEventListener('pointerdown',e=>{
   lastInput=e.pointerType;
   const now=performance.now();
   if(e.pointerType==='pen')lastPen=now;
-  if(drawerOpen||!vp.hidden){e.preventDefault();setDrawer(false);setPanel(false);dead.add(e.pointerId);return;} // first tap only closes the open panel
+  if(drawerOpen||!vp.hidden||!lp.hidden){e.preventDefault();setDrawer(false);setPanel(false);setLayersPanel(false);dead.add(e.pointerId);return;} // first tap only closes the open panel
   if(e.pointerType==='touch'){
     if(st.palm&&(Math.max(e.width||0,e.height||0)>PALM||now-lastPen<900)){dead.add(e.pointerId);return;}
     if(act&&act.type==='pen'){dead.add(e.pointerId);return;}
@@ -715,6 +746,7 @@ stage.addEventListener('pointerdown',e=>{
   if(hand||framing){try{stage.setPointerCapture(e.pointerId);}catch(_){}resetClear();hideHint();pan={id:e.pointerId,x:e.clientX,y:e.clientY,vx,vy};return;}
   const b=cur,[x,y]=pos(e);
   if(x<0||y<0||x>W||y>H){dead.add(e.pointerId);return;} // the dark frame is not paper
+  if(!active.visible&&!b.pick){hint.textContent='השכבה הפעילה מוסתרת. הציגו אותה כדי לצייר.';hint.hidden=false;dead.add(e.pointerId);return;}
   try{stage.setPointerCapture(e.pointerId);}catch(_){}
   resetClear();hideHint();
   if(b.fill){act={id:e.pointerId,type:e.pointerType,fill:true,x,y,cx:e.clientX,cy:e.clientY,moved:false};return;}
@@ -725,7 +757,7 @@ stage.addEventListener('pointerdown',e=>{
     moveMark(x+cloneOff[0],y+cloneOff[1]);
   }
   let target=mctx;
-  if(b.layered){lctx.clearRect(0,0,W,H);live.style.opacity=st.opacity*(b.alpha||1);target=lctx;}
+  if(b.layered){lctx.clearRect(0,0,W,H);live.style.opacity=st.opacity*(b.alpha||1)*active.opacity;target=lctx;}
   act={id:e.pointerId,type:e.pointerType,b,x,y,t:e.timeStamp,v:0,sim:.55,pr:.55,stroke:new Stroke(b,target,{...st,off:cloneOff})};
   act.pr=pressure(e,act);act.stroke.add(x,y,act.pr);
 });
@@ -781,10 +813,10 @@ $('#save').addEventListener('click',()=>{
   let t,c;
   if(frameOn){ // the wooden frame and its inner shadow are part of the picture
     const ft=rawFt();t=document.createElement('canvas');t.width=Math.round((W+2*ft)*DPR);t.height=Math.round((H+2*ft)*DPR);
-    c=t.getContext('2d');c.scale(DPR,DPR);c.fillStyle=paperC;c.fillRect(ft,ft,W,H);c.drawImage(main,ft,ft,W,H);paintFrame(c,W,H,ft,DPR);
+    c=t.getContext('2d');c.scale(DPR,DPR);c.fillStyle=paperC;c.fillRect(ft,ft,W,H);drawLayers(c,ft,ft,W,H);paintFrame(c,W,H,ft,DPR);
   }else{
     t=document.createElement('canvas');t.width=main.width;t.height=main.height;c=t.getContext('2d');
-    c.fillStyle=paperC;c.fillRect(0,0,t.width,t.height);c.drawImage(main,0,0);
+    c.fillStyle=paperC;c.fillRect(0,0,t.width,t.height);drawLayers(c,0,0,t.width,t.height);
   }
   lastCv=t;out.src=t.toDataURL('image/png');blobPromise=new Promise(res=>t.toBlob(res,'image/png'));
   msg.textContent='"שמור כקובץ" מוריד את הציור לתיקיית ההורדות.'+(frameOn?' הציור נשמר עם המסגרת. אפשר לכבות אותה בתפריט, "מסגרת".':'');sheet.hidden=false;$('#close').focus();
@@ -814,7 +846,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='13';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='14';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -841,7 +873,7 @@ function fitView(){
   vz=clamp(Math.min((sw-2*m)/(bw+ft),(sh-2*m-top)/(bh+ft)),MINZ,MAXZ);
   const [ox,oy]=rot(W/2*vz,H/2*vz,va);vx=sw/2-ox;vy=top+(sh-top)/2-oy;applyView();
 }
-function setPanel(o){vp.hidden=!o;if(o){setDrawer(false);exitFrame();}updateCloneUI();$('#viewBtn').setAttribute('aria-expanded',o?'true':'false');}
+function setPanel(o){vp.hidden=!o;if(o){setDrawer(false);exitFrame();setLayersPanel(false);}updateCloneUI();$('#viewBtn').setAttribute('aria-expanded',o?'true':'false');}
 $('#viewBtn').addEventListener('click',()=>setPanel(vp.hidden));
 $('#vClose').addEventListener('click',()=>setPanel(false));
 $('#vFit').addEventListener('click',fitView);
@@ -855,12 +887,89 @@ zm.addEventListener('input',()=>{const [cx,cy]=mid();viewAt(cx,cy,MINZ*Math.exp(
 $('#hand').addEventListener('click',()=>{hand=!hand;$('#hand').setAttribute('aria-pressed',hand?'true':'false');stage.style.cursor=hand?'grab':'crosshair';});
 bind('tol',()=>{});
 
+/* ---------- layers ---------- */
+const lp=$('#lp'),llist=$('#llist'),lMsg=$('#lMsg');let lMsgT=0;
+function layerMsg(t){lMsg.textContent=t;clearTimeout(lMsgT);lMsgT=setTimeout(()=>{lMsg.textContent='';},3500);}
+function compData(x0,y0,w,h){ // what you see, all visible layers with their opacity (no paper)
+  const t=document.createElement('canvas');t.width=w;t.height=h;const c=t.getContext('2d',{willReadFrequently:true});
+  for(const L of layers){if(!L.visible)continue;c.globalAlpha=L.opacity;c.drawImage(L.cv,x0,y0,w,h,0,0,w,h);}
+  return c.getImageData(0,0,w,h).data;
+}
+function drawLayers(c,x,y,w,h){c.save();for(const L of layers){if(!L.visible)continue;c.globalAlpha=L.opacity;c.drawImage(L.cv,x,y,w,h);}c.restore();}
+function insertLayer(L,idx){layers.splice(idx,0,L);styleLayer(L);setActive(L);}
+function removeLayer(L){const i=layers.indexOf(L),was=L===active;layers.splice(i,1);L.cv.remove();setActive(was?layers[Math.max(0,i-1)]:active);return i;}
+function moveTo(L,to){layers.splice(layers.indexOf(L),1);layers.splice(to,0,L);relayer();renderLayersUI();}
+function mergeDown(upper,lower){const c=lower.ctx;c.save();c.setTransform(1,0,0,1,0,0);c.globalAlpha=upper.visible?upper.opacity:0;c.drawImage(upper.cv,0,0);c.restore();}
+function layerUndo(e){
+  if(e.op==='add')removeLayer(e.L);
+  else if(e.op==='del')insertLayer(e.L,e.idx);
+  else if(e.op==='move')moveTo(e.L,e.from);
+  else if(e.op==='merge'){const c=e.lower.ctx;c.save();c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;c.globalCompositeOperation='copy';c.drawImage(e.before,0,0);c.restore();insertLayer(e.upper,e.idx);}
+}
+function layerRedo(e){
+  if(e.op==='add')insertLayer(e.L,e.idx);
+  else if(e.op==='del')removeLayer(e.L);
+  else if(e.op==='move')moveTo(e.L,e.to);
+  else if(e.op==='merge'){mergeDown(e.upper,e.lower);removeLayer(e.upper);}
+}
+function canAdd(){if(layers.length>=MAXL){layerMsg('אפשר עד '+MAXL+' שכבות.');return false;}if((layers.length+1)*main.width*main.height>MAXLPX){layerMsg('הדף גדול מדי בשביל עוד שכבה.');return false;}return true;}
+function setLayersPanel(o){
+  if(o&&framing)exitFrame();
+  lp.hidden=!o;$('#layersBtn').setAttribute('aria-expanded',o?'true':'false');
+  if(o){setDrawer(false);setPanel(false);renderLayersUI();}
+  updateCloneUI();
+}
+function renderLayersUI(){
+  const clr=$('#clearTxt');if(clr&&!clearTimer)clr.textContent=clearLabel();
+  if(lp.hidden)return;
+  llist.textContent='';
+  for(const L of [...layers].reverse()){
+    const row=document.createElement('div');row.className='lrow';row.setAttribute('aria-current',L===active?'true':'false');
+    const eye=document.createElement('button');eye.type='button';eye.className='btn leye';eye.setAttribute('aria-pressed',L.visible?'true':'false');eye.setAttribute('aria-label','הצג או הסתר: '+L.name);
+    eye.innerHTML='<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+    eye.addEventListener('click',()=>{L.visible=!L.visible;styleLayer(L);renderLayersUI();scheduleSave();});
+    const nm=document.createElement('button');nm.type='button';nm.className='lname';nm.textContent=L.name;nm.addEventListener('click',()=>{if(L!==active)setActive(L);});
+    const op=document.createElement('input');op.type='range';op.className='lop';op.min=0;op.max=100;op.value=Math.round(L.opacity*100);op.setAttribute('aria-label','אטימות: '+L.name);
+    const out=document.createElement('output');out.textContent=op.value+'%';
+    op.addEventListener('input',()=>{L.opacity=op.value/100;styleLayer(L);out.textContent=op.value+'%';if(L===active&&act&&act.b&&act.b.layered)live.style.opacity=st.opacity*(act.b.alpha||1)*L.opacity;scheduleSave();});
+    row.append(eye,nm,op,out);llist.appendChild(row);
+  }
+  const i=layers.indexOf(active);
+  $('#lUp').disabled=i>=layers.length-1;$('#lDown').disabled=i<=0;$('#lMerge').disabled=i<=0;$('#lDel').disabled=layers.length<2;
+}
+$('#layersBtn').addEventListener('click',()=>setLayersPanel(lp.hidden));
+$('#lClose').addEventListener('click',()=>setLayersPanel(false));
+$('#lAdd').addEventListener('click',()=>{
+  if(!canAdd())return;const L=newLayer();sizeLayer(L,main.width,main.height,W,H);const idx=layers.indexOf(active)+1;
+  insertLayer(L,idx);pushHist({layerOp:true,op:'add',L,idx});
+});
+$('#lDup').addEventListener('click',()=>{
+  if(!canAdd())return;const src=active,L=newLayer();sizeLayer(L,main.width,main.height,W,H);
+  L.ctx.save();L.ctx.setTransform(1,0,0,1,0,0);L.ctx.drawImage(src.cv,0,0);L.ctx.restore();L.name=(src.name+' 2').slice(0,24);L.opacity=src.opacity;L.visible=src.visible;
+  const idx=layers.indexOf(src)+1;insertLayer(L,idx);pushHist({layerOp:true,op:'add',L,idx});
+});
+$('#lDel').addEventListener('click',()=>{
+  if(layers.length<2){layerMsg('חייבת להישאר שכבה אחת.');return;}
+  const L=active,idx=removeLayer(L);pushHist({layerOp:true,op:'del',L,idx});
+});
+$('#lUp').addEventListener('click',()=>{const from=layers.indexOf(active);if(from>=layers.length-1)return;moveTo(active,from+1);pushHist({layerOp:true,op:'move',L:active,from,to:from+1});});
+$('#lDown').addEventListener('click',()=>{const from=layers.indexOf(active);if(from<=0)return;moveTo(active,from-1);pushHist({layerOp:true,op:'move',L:active,from,to:from-1});});
+$('#lMerge').addEventListener('click',()=>{
+  const idx=layers.indexOf(active);if(idx<=0)return;const upper=active,lower=layers[idx-1],before=copyCv(lower.cv);
+  mergeDown(upper,lower);removeLayer(upper);pushHist({layerOp:true,op:'merge',upper,lower,idx,before});
+});
+$('#lRen').addEventListener('click',()=>{
+  let n=null;try{n=prompt('שם השכבה',active.name);}catch(_){}
+  if(n&&n.trim()){active.name=n.trim().slice(0,24);renderLayersUI();scheduleSave();}
+});
+
 /* ---------- paint bucket ---------- */
 function doFill(x,y){
   const w=main.width,h=main.height,sx=Math.floor(x*DPR),sy=Math.floor(y*DPR);
   if(sx<0||sy<0||sx>=w||sy>=h)return;
-  const img=mctx.getImageData(0,0,w,h),d=img.data,i0=(sy*w+sx)*4,r0=d[i0],g0=d[i0+1],b0=d[i0+2],a0=d[i0+3],tol=+$('#tol').value;
-  const match=i=>Math.abs(d[i]-r0)<=tol&&Math.abs(d[i+1]-g0)<=tol&&Math.abs(d[i+2]-b0)<=tol&&Math.abs(d[i+3]-a0)<=tol;
+  const img=mctx.getImageData(0,0,w,h),d=img.data,sd=layers.length>1?compData(0,0,w,h):d; // the region is found on what you see (all layers), the paint goes on the active layer
+  const i0=(sy*w+sx)*4,r0=sd[i0],g0=sd[i0+1],b0=sd[i0+2],a0=sd[i0+3],tol=+$('#tol').value;
+  const match=i=>Math.abs(sd[i]-r0)<=tol&&Math.abs(sd[i+1]-g0)<=tol&&Math.abs(sd[i+2]-b0)<=tol&&Math.abs(sd[i+3]-a0)<=tol;
   const mask=new Uint8Array(w*h),stack=[sx,sy];
   let bx0=w,by0=h,bx1=-1,by1=-1;
   while(stack.length){
@@ -907,7 +1016,7 @@ function sampleAt(x,y){
   const px=Math.round(x*DPR),py=Math.round(y*DPR),r=Math.max(1,Math.round(DPR*1.5));
   const x0=Math.max(0,px-r),y0=Math.max(0,py-r),x1=Math.min(main.width,px+r+1),y1=Math.min(main.height,py+r+1);
   if(x1<=x0||y1<=y0)return null;
-  const d=mctx.getImageData(x0,y0,x1-x0,y1-y0).data,P=paperRGB();let rr=0,gg=0,bb=0,n=0;
+  const d=compData(x0,y0,x1-x0,y1-y0),P=paperRGB();let rr=0,gg=0,bb=0,n=0;
   for(let i=0;i<d.length;i+=4){const a=d[i+3]/255;rr+=d[i]*a+P[0]*(1-a);gg+=d[i+1]*a+P[1]*(1-a);bb+=d[i+2]*a+P[2]*(1-a);n++;}
   return '#'+[rr,gg,bb].map(v=>Math.round(v/n).toString(16).padStart(2,'0')).join('');
 }
@@ -927,7 +1036,7 @@ function layoutFrame(){
   $('#pfInfo').textContent=framing.mode==='page'?`${Math.round((f.r-f.l)*DPR)} × ${Math.round((f.b-f.t)*DPR)} px`:'תמונה';
 }
 function enterFrame(mode,cv){
-  exitFrame();setDrawer(false);setPanel(false);cancelStroke();
+  exitFrame();setDrawer(false);setPanel(false);setLayersPanel(false);cancelStroke();
   framing={mode,f:{l:0,t:0,r:W,b:H},cv:null};
   if(mode==='image'){
     const sc=Math.min(W/cv.width,H/cv.height)*.9,w=Math.round(cv.width*sc),h=Math.round(cv.height*sc),l=Math.round((W-w)/2),t=Math.round((H-h)/2);
@@ -981,17 +1090,18 @@ $('#pfOk').addEventListener('click',()=>{
   else{mctx.save();mctx.imageSmoothingQuality='high';mctx.drawImage(framing.cv,f.l,f.t,f.r-f.l,f.b-f.t);mctx.restore();commitPatch([f.l,f.t,f.r,f.b]);hideHint();}
   exitFrame();
 });
-function setPageSize(nw,nh,snap,ox,oy){
+function setPageSize(nw,nh,snaps,ox,oy){
   const pw=Math.round(nw*DPR),ph=Math.round(nh*DPR);
-  for(const c of [main,shadow]){c.width=pw;c.height=ph;c.getContext('2d').drawImage(snap,ox,oy);}
-  live.width=pw;live.height=ph;
-  main.style.width=live.style.width=nw+'px';main.style.height=live.style.height=nh+'px';
-  W=nw;H=nh;world.style.width=W+'px';world.style.height=H+'px';mctx.setTransform(DPR,0,0,DPR,0,0);lctx.setTransform(DPR,0,0,DPR,0,0);updateFrameSize();
+  for(const L of layers)sizeLayer(L,pw,ph,nw,nh);
+  for(const q of snaps){if(!layers.includes(q.L))continue;const c=q.L.ctx;c.save();c.setTransform(1,0,0,1,0,0);c.drawImage(q.snap,ox,oy);c.restore();}
+  shadow.width=pw;shadow.height=ph;sctx.drawImage(main,0,0);
+  live.width=pw;live.height=ph;live.style.width=nw+'px';live.style.height=nh+'px';
+  W=nw;H=nh;world.style.width=W+'px';world.style.height=H+'px';lctx.setTransform(DPR,0,0,DPR,0,0);updateFrameSize();
 }
 function doResize(l,t,r,b,push){
-  const snap=document.createElement('canvas');snap.width=main.width;snap.height=main.height;snap.getContext('2d').drawImage(main,0,0);
-  const entry={resize:true,l,t,r,b,snap,oW:W,oH:H,oFixed:pageFixed};
-  setPageSize(r-l,b-t,snap,Math.round(-l*DPR),Math.round(-t*DPR));
+  const snaps=layers.map(L=>({L,snap:copyCv(L.cv)}));
+  const entry={resize:true,l,t,r,b,snaps,oW:W,oH:H,oFixed:pageFixed};
+  setPageSize(r-l,b-t,snaps,Math.round(-l*DPR),Math.round(-t*DPR));
   const [dx,dy]=rot(l*vz,t*vz,va);vx+=dx;vy+=dy;pageFixed=true;applyView();
   scheduleSave();
   if(push){
@@ -1001,7 +1111,7 @@ function doResize(l,t,r,b,push){
   }else hist[hi-1]=entry;
 }
 function unResize(e){
-  setPageSize(e.oW,e.oH,e.snap,0,0);
+  setPageSize(e.oW,e.oH,e.snaps,0,0);
   const [dx,dy]=rot(e.l*vz,e.t*vz,va);vx-=dx;vy-=dy;pageFixed=e.oFixed;applyView();scheduleSave();
 }
 $('#imgBtn').addEventListener('click',()=>{setDrawer(false);$('#imgIn').click();});
@@ -1057,8 +1167,8 @@ let saveT=0,restoring=true;
 function scheduleSave(){if(restoring)return;clearTimeout(saveT);saveT=setTimeout(()=>saveNow().catch(()=>{}),900);}
 async function saveNow(){
   if(restoring||!W)return;clearTimeout(saveT);saveT=0;
-  const blob=await new Promise(res=>main.toBlob(res,'image/png'));if(!blob)return;
-  await idbSet('doc',{blob,w:W,h:H,dpr:DPR,paper:app.dataset.paper,fixed:pageFixed,view:{vx,vy,vz,va},color:st.color,brush:lastDrawBrush.id,size:st.size});
+  const ls=[];for(const L of layers){const blob=await new Promise(res=>L.cv.toBlob(res,'image/png'));if(!blob)return;ls.push({blob,name:L.name,visible:L.visible,opacity:L.opacity});}
+  await idbSet('doc',{v:2,layers:ls,active:layers.indexOf(active),w:W,h:H,dpr:DPR,paper:app.dataset.paper,fixed:pageFixed,view:{vx,vy,vz,va},color:st.color,brush:lastDrawBrush.id,size:st.size});
 }
 let viewT=0;
 function viewChanged(){if(restoring)return;clearTimeout(viewT);viewT=setTimeout(scheduleSave,1500);}
@@ -1067,12 +1177,16 @@ addEventListener('pagehide',()=>{saveNow().catch(()=>{});});
 async function restore(){
   try{
     const d=await idbGet('doc');
-    if(d&&d.blob&&!hist.length&&d.w>0&&d.h>0){
-      const bmp=await createImageBitmap(d.blob),t=document.createElement('canvas');t.width=t.height=1;
-      setPageSize(d.w,d.h,t,0,0);
-      mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.drawImage(bmp,0,0,main.width,main.height);mctx.restore();
-      if(bmp.close)bmp.close();
-      shadow.getContext('2d').drawImage(main,0,0);
+    const src=d&&(d.layers&&d.layers.length?d.layers:(d.blob?[{blob:d.blob}]:null));
+    if(src&&!hist.length&&d.w>0&&d.h>0){
+      const bmps=await Promise.all(src.map(x=>createImageBitmap(x.blob)));
+      setPageSize(d.w,d.h,[],0,0);
+      while(layers.length<src.length){const L=newLayer();layers.push(L);sizeLayer(L,main.width,main.height,W,H);}
+      layers.forEach((L,i)=>{
+        const q=src[i]||{};if(q.name)L.name=String(q.name).slice(0,24);L.visible=q.visible!==false;L.opacity=Number.isFinite(q.opacity)?clamp(q.opacity,0,1):1;styleLayer(L);
+        if(bmps[i]){L.ctx.save();L.ctx.setTransform(1,0,0,1,0,0);L.ctx.drawImage(bmps[i],0,0,L.cv.width,L.cv.height);L.ctx.restore();if(bmps[i].close)bmps[i].close();}
+      });
+      setActive(layers[clamp(d.active|0,0,layers.length-1)]);
       pageFixed=!!d.fixed;app.dataset.paper=d.paper==='dark'?'dark':'light';
       if(d.view&&[d.view.vx,d.view.vy,d.view.vz,d.view.va].every(Number.isFinite)){vx=d.view.vx;vy=d.view.vy;vz=d.view.vz;va=d.view.va;}
       applyView();
