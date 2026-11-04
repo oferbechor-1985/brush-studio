@@ -293,6 +293,10 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
         <button class="btn" id="psize" title="שינוי גודל הדף במסגרת צהובה"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/><path d="M3 9V3h6M21 15v6h-6"/></svg>גודל הדף</button>
         <button class="btn" id="imgBtn" title="הוספת תמונה מהגלריה"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 16V9M9 12l3-3 3 3"/></svg>תמונה</button>
         <button class="btn" id="frameBtn" aria-pressed="true" title="הצגה והסתרה של המסגרת סביב הדף">מסגרת</button>
+        <button class="btn" id="mmBtn" aria-pressed="true" title="הצגה והסתרה של מפת הניווט">מפת ניווט</button>
+        <button class="btn" id="projSave" title="שמירת קובץ עבודה להמשך">שמור עבודה</button>
+        <button class="btn" id="projOpen" title="פתיחת קובץ עבודה">פתח עבודה</button>
+        <input type="file" id="projIn" hidden>
         <input type="file" id="imgIn" accept="image/*" hidden>
       </div>
     </section>
@@ -913,7 +917,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='19';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='20';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1350,6 +1354,7 @@ async function saveNow(){
 }
 let viewT=0;
 /* ---------- navigation minimap ---------- */
+let mmOn=true;try{mmOn=localStorage.getItem('mmOn')!=='0';}catch(_){}
 const mm=$('#mm'),mmc=mm.getContext('2d'),mmT=document.createElement('canvas');let mmDirty=true,mmTimer=0,mmDrag=false;
 function mmThumb(){
   const k=96/Math.max(W,H),tw=Math.max(1,Math.round(W*k)),th=Math.max(1,Math.round(H*k));
@@ -1359,7 +1364,7 @@ function mmThumb(){
 }
 function mmDraw(){
   let rs=true;try{rs=restoring;}catch(_){}
-  if(!W||rs){mm.hidden=true;return;}
+  if(!W||rs||!mmOn){mm.hidden=true;return;}
   const sw=stage.clientWidth,sh=stage.clientHeight;
   const inside=[[0,0],[W,0],[W,H],[0,H]].every(([x,y])=>{const [ox,oy]=rot(x*vz,y*vz,va),X=vx+ox,Y=vy+oy;return X>=0&&X<=sw&&Y>=0&&Y<=sh;});
   if(inside){mm.hidden=true;return;}
@@ -1372,6 +1377,8 @@ function mmDraw(){
   mmc.beginPath();q.forEach((p,i)=>i?mmc.lineTo(p[0]*k,p[1]*k):mmc.moveTo(p[0]*k,p[1]*k));mmc.closePath();
   mmc.lineWidth=3;mmc.strokeStyle='#ff3b6b';mmc.stroke();
 }
+$('#mmBtn').setAttribute('aria-pressed',mmOn?'true':'false');
+$('#mmBtn').addEventListener('click',()=>{mmOn=!mmOn;$('#mmBtn').setAttribute('aria-pressed',mmOn?'true':'false');try{localStorage.setItem('mmOn',mmOn?'1':'0');}catch(_){}mmDraw();});
 function mmMark(){mmDirty=true;if(mmTimer)return;mmTimer=setTimeout(()=>{mmTimer=0;mmDraw();},350);}
 function mmGo(e){const r=mm.getBoundingClientRect(),px=clamp((e.clientX-r.left)/r.width,0,1)*W,py=clamp((e.clientY-r.top)/r.height,0,1)*H,[ox,oy]=rot(px*vz,py*vz,va);vx=stage.clientWidth/2-ox;vy=stage.clientHeight/2-oy;applyView();}
 mm.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();mmDrag=true;mm.setPointerCapture(e.pointerId);mmGo(e);});
@@ -1381,12 +1388,17 @@ function viewChanged(){mmDraw();if(restoring)return;clearTimeout(viewT);viewT=se
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveNow().catch(()=>{});});
 addEventListener('pagehide',()=>{saveNow().catch(()=>{});});
 async function restore(){
-  try{
-    const d=await idbGet('doc');
+  try{await loadDoc(await idbGet('doc'),false);}catch(_){}
+  restoring=false;mmMark();
+}
+async function loadDoc(d,replace){
+  {
     const src=d&&(d.layers&&d.layers.length?d.layers:(d.blob?[{blob:d.blob}]:null));
-    if(src&&!hist.length&&d.w>0&&d.h>0){
+    if(src&&(replace||!hist.length)&&d.w>0&&d.h>0){
+      if(replace){while(layers.length>1)removeLayer(layers[layers.length-1]);hist.length=0;hi=0;if(sel)clearSel();}
       const bmps=await Promise.all(src.map(x=>createImageBitmap(x.blob)));
       setPageSize(d.w,d.h,[],0,0);
+      if(replace)for(const L of layers){L.ctx.save();L.ctx.setTransform(1,0,0,1,0,0);L.ctx.clearRect(0,0,L.cv.width,L.cv.height);L.ctx.restore();}
       while(layers.length<src.length){const L=newLayer();layers.push(L);sizeLayer(L,main.width,main.height,W,H);}
       layers.forEach((L,i)=>{
         const q=src[i]||{};if(q.name)L.name=String(q.name).slice(0,24);L.visible=q.visible!==false;L.locked=!!q.locked;L.opacity=Number.isFinite(q.opacity)?clamp(q.opacity,0,1):1;styleLayer(L);
@@ -1399,11 +1411,35 @@ async function restore(){
       const b=BR.find(x=>x.id===d.brush);if(b&&!b.pick)selectBrush(b);
       if(Number.isFinite(d.size)&&d.size>=1&&d.size<=SZMAX){st.size=cur.size=d.size;setSizeUI(d.size);}
       if(/^#[0-9a-f]{6}$/i.test(d.color||''))setColor(d.color);
-      hideHint();queuePreviews();
+      hideHint();queuePreviews();if(replace){syncBtns();}
     }
-  }catch(_){}
-  restoring=false;mmMark();
+  }
 }
+
+/* ---------- project file: save & reopen to continue ---------- */
+const blobToUrl=b=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(b);});
+$('#projSave').addEventListener('click',async()=>{
+  try{
+    const ls=[];for(const L of layers){const blob=await new Promise(res=>L.cv.toBlob(res,'image/png'));if(!blob)throw 0;ls.push({name:L.name,visible:L.visible,locked:L.locked,opacity:L.opacity,png:await blobToUrl(blob)});}
+    const doc={app:'OBPaint',v:1,w:W,h:H,fixed:pageFixed,paper:app.dataset.paper,view:{vx,vy,vz,va},color:st.color,brush:lastDrawBrush.id,size:st.size,active:layers.indexOf(active),layers:ls};
+    const blob=new Blob([JSON.stringify(doc)],{type:'application/octet-stream'}),a=document.createElement('a'),name=stamp()+'.obpaint';
+    a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),15000);
+    setDrawer(false);hint.textContent='נשמר קובץ עבודה: '+name;hint.hidden=false;setTimeout(hideHint,3500);
+  }catch(_){hint.textContent='שמירת קובץ העבודה לא הצליחה.';hint.hidden=false;}
+});
+$('#projOpen').addEventListener('click',()=>$('#projIn').click());
+$('#projIn').addEventListener('change',async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{
+    const j=JSON.parse(await f.text());
+    if(j.app!=='OBPaint'||!Array.isArray(j.layers)||!j.layers.length||!(j.w>0&&j.h>0)||j.layers.length>MAXL||j.w*j.h*DPR*DPR*j.layers.length>MAXLPX*MAXL)throw 0;
+    if(!confirm('לפתוח את קובץ העבודה? הציור הנוכחי יוחלף.'))return;
+    const layersIn=[];for(const q of j.layers){if(typeof q.png!=='string'||!q.png.startsWith('data:image/png'))throw 0;layersIn.push({blob:await (await fetch(q.png)).blob(),name:q.name,visible:q.visible,locked:q.locked,opacity:q.opacity});}
+    restoring=true;
+    await loadDoc({layers:layersIn,w:j.w,h:j.h,fixed:j.fixed,paper:j.paper,view:j.view,color:j.color,brush:j.brush,size:j.size,active:j.active},true);
+    restoring=false;fitView();mmMark();scheduleSave();setDrawer(false);
+  }catch(_){restoring=false;hint.textContent='לא הצלחתי לפתוח את הקובץ.';hint.hidden=false;}
+});
 
 /* ---------- feedback ---------- */
 const FEEDBACK_URL='https://brush-feedback.ofer-bechor.workers.dev';
