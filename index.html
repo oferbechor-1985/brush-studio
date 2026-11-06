@@ -59,6 +59,8 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 .ctl{display:grid;grid-template-columns:64px minmax(0,1fr) 40px;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
 .ctl input[type=range]{width:100%;accent-color:var(--accent);min-height:44px}
 .ctl output{font:500 12px var(--f-mono);min-width:3ch;color:var(--fg);font-variant-numeric:tabular-nums;text-align:end}
+.numin{width:6ch;min-height:36px;font:500 13px var(--f-mono);background:var(--panel);color:var(--fg);border:1px solid var(--accent);border-radius:8px;text-align:center;padding:0 2px}
+.lrow .numin{width:100%;min-height:32px;font-size:11px}
 .ctl select{grid-column:2 / 4;min-height:44px;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:10px;padding:0 10px;font:inherit}
 .chk{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);min-height:44px}
 .chk input{width:20px;height:20px;accent-color:var(--accent)}
@@ -223,6 +225,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
       <button class="btn" id="lUp" aria-label="הזז שכבה למעלה">▲</button>
       <button class="btn" id="lDown" aria-label="הזז שכבה למטה">▼</button>
       <button class="btn" id="lRen">שם</button>
+      <button class="btn" id="lClr">נקה שכבה</button>
       <button class="btn" id="lDel">מחק</button>
     </div>
     <p id="lMsg"></p>
@@ -295,6 +298,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
         <button class="btn" id="frameBtn" aria-pressed="true" title="הצגה והסתרה של המסגרת סביב הדף">מסגרת</button>
         <button class="btn" id="mmBtn" aria-pressed="true" title="הצגה והסתרה של מפת הניווט">מפת ניווט</button>
         <button class="btn" id="projSave" title="שמירת קובץ עבודה להמשך">שמור עבודה</button>
+        <button class="btn" id="projShare" title="שיתוף קובץ העבודה, למשל שמירה בתיקייה">שתף עבודה</button>
         <button class="btn" id="projOpen" title="פתיחת קובץ עבודה">פתח עבודה</button>
         <input type="file" id="projIn" hidden>
         <input type="file" id="imgIn" accept="image/*" hidden>
@@ -324,6 +328,16 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 
   <div class="sheet" id="upd" hidden><div class="card" role="dialog" aria-label="עדכון"><p id="updMsg">יש גרסה חדשה של האפליקציה.</p><div class="row"><button class="btn" id="updGo">עדכן עכשיו</button><button class="btn" id="updLater">אחר כך</button></div></div></div>
 
+  <div class="sheet" id="nd" hidden>
+    <div class="card" role="dialog" aria-label="ציור חדש">
+      <p>הציור הנוכחי לא נשמר. לשמור אותו לפני שמתחילים ציור חדש?</p>
+      <div class="row">
+        <button class="btn" id="ndSave">שמור עבודה והתחל</button>
+        <button class="btn" id="ndGo">התחל בלי לשמור</button>
+        <button class="btn" id="ndNo">ביטול</button>
+      </div>
+    </div>
+  </div>
   <div class="sheet" id="sheet" hidden>
     <div class="card" role="dialog" aria-label="שמירת הציור">
       <img id="out" alt="הציור שלכם">
@@ -457,7 +471,7 @@ const BR=[
  {id:'sellasso',name:'בחירה: חופשית',size:1,pv:1,sel:'lasso',noPv:true,dab(){}},
  {id:'selpoly',name:'בחירה: קווים',size:1,pv:1,sel:'poly',noPv:true,dab(){}},
  {id:'selcolor',name:'בחירה: צבע',size:1,pv:1,sel:'color',noPv:true,dab(){}},
- {id:'eraser',name:'מחק',size:30,pv:10,sp:.1,erase:true,
+ {id:'eraser',name:'מחק',size:30,pv:10,sp:.1,erase:true,layered:true,
   dab(c,p){c.globalAlpha=p.base;c.fillStyle='#000';c.beginPath();c.arc(p.x,p.y,p.s*.5,0,TAU);c.fill();}}
 ];
 
@@ -484,7 +498,7 @@ function padEdges(U,sx,sy,d,cw,ch){
 }
 class Stroke{
   constructor(b,ctx,s){this.b=b;this.c=ctx;this.s=s;this.last=null;this.sx=0;this.sy=0;this.carry=0;this.box=[1e9,1e9,-1e9,-1e9];
-    this.rs=b.init?b.init(s):null;if(b.erase)ctx.globalCompositeOperation='destination-out';}
+    this.rs=b.init?b.init(s):null;if(b.erase&&!b.layered)ctx.globalCompositeOperation='destination-out';}
   space(){const b=this.b;return Math.max(.7,b.sp*this.s.size*(b.mul||1));}
   smudgeDab(x,y,pr){
     const s=this.s,c=this.c,r=s.size*.5,m=r+4,bx=this.box;
@@ -694,6 +708,9 @@ function setSizeUI(z){$('#size').value=posFromSize(z);$('#sizeOut').textContent=
 $('#size').addEventListener('input',()=>{const z=sizeFromPos(+$('#size').value);st.size=z;cur.size=z;$('#sizeOut').textContent=z;});
 const bind=(id,fn)=>{const el=$('#'+id);el.addEventListener('input',()=>{fn(+el.value);$('#'+id+'Out').textContent=el.value;});};
 bind('opac',v=>{st.opacity=v/100;});
+{const dir=(id,min,max)=>{const el=$('#'+id);editNum($('#'+id+'Out'),min,max,()=>el.value,v=>{el.value=v;el.dispatchEvent(new Event('input',{bubbles:true}));});};
+ dir('opac',5,100);dir('smooth',0,90);dir('tol',0,120);
+ editNum($('#sizeOut'),1,SZMAX,()=>st.size,v=>{setSizeUI(v);st.size=cur.size=v;});}
 bind('smooth',v=>{st.smooth=1-v/100*.85;});
 $('#pmode').addEventListener('change',e=>{st.pmode=e.target.value;});
 $('#palm').addEventListener('change',e=>{st.palm=e.target.checked;});
@@ -720,7 +737,9 @@ function commitPatch(box){
   sctx.putImageData(after,x,y);
   pushHist({x,y,before,after,layer:active});
 }
-function pushHist(e){hist.length=hi;hist.push(e);if(hist.length>60)hist.shift();hi=hist.length;syncBtns();scheduleSave();}
+let dirty=false;try{dirty=localStorage.getItem('dirty')==='1';}catch(_){}
+function setDirty(v){dirty=v;try{localStorage.setItem('dirty',v?'1':'0');}catch(_){}}
+function pushHist(e){setDirty(true);hist.length=hi;hist.push(e);if(hist.length>60)hist.shift();hi=hist.length;syncBtns();scheduleSave();}
 function undo(){if(hi<=0)return;exitFrame();const e=hist[--hi];if(e.resize)unResize(e);else if(e.layerOp)layerUndo(e);else if(layers.includes(e.layer)){if(e.layer!==active)setActive(e.layer);mctx.putImageData(e.before,e.x,e.y);sctx.putImageData(e.before,e.x,e.y);}syncBtns();scheduleSave();}
 function redo(){if(hi>=hist.length)return;exitFrame();const e=hist[hi++];if(e.resize)doResize(e.l,e.t,e.r,e.b,false);else if(e.layerOp)layerRedo(e);else if(layers.includes(e.layer)){if(e.layer!==active)setActive(e.layer);mctx.putImageData(e.after,e.x,e.y);sctx.putImageData(e.after,e.x,e.y);}syncBtns();scheduleSave();}
 undoBtn.addEventListener('click',undo);redoBtn.addEventListener('click',redo);
@@ -728,12 +747,34 @@ addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()===
 
 let clearTimer=0;const clearBtn=$('#clear'),clearTxt=$('#clearTxt');
 clearBtn.addEventListener('click',()=>{
+  if(!sel){setDrawer(false);if(dirty)$('#nd').hidden=false;else newDrawing();return;}
   if(!clearTimer){clearTxt.textContent='לחצו שוב';clearBtn.classList.add('warn');clearTimer=setTimeout(resetClear,2500);return;}
   resetClear();mctx.clearRect(0,0,W,H);commitPatch([0,0,W,H]);hideHint();
 });
-const clearLabel=()=>sel?'נקה בחירה':layers.length>1?'נקה שכבה':'נקה';
+const clearLabel=()=>sel?'נקה בחירה':'ציור חדש';
+function newDrawing(){
+  while(layers.length>1)removeLayer(layers[layers.length-1]);
+  const L=layers[0];L.ctx.save();L.ctx.setTransform(1,0,0,1,0,0);L.ctx.clearRect(0,0,L.cv.width,L.cv.height);L.ctx.restore();
+  L.name='שכבה 1';L.opacity=1;L.visible=true;L.locked=false;styleLayer(L);
+  hist.length=0;hi=0;syncBtns();if(sel)clearSel();setActive(L);setDirty(false);renderLayersUI();hideHint();mmMark();scheduleSave();
+}
+$('#ndSave').addEventListener('click',async()=>{if(!await saveProject())return;$('#nd').hidden=true;newDrawing();});
+$('#ndGo').addEventListener('click',()=>{$('#nd').hidden=true;newDrawing();});
+$('#ndNo').addEventListener('click',()=>{$('#nd').hidden=true;});
 function resetClear(){clearTimeout(clearTimer);clearTimer=0;clearTxt.textContent=clearLabel();clearBtn.classList.remove('warn');}
 const hint=$('#hint');function hideHint(){hint.hidden=true;}
+function editNum(out,min,max,get,set){
+  out.style.cursor='text';out.tabIndex=0;out.title='הקלדת מספר';
+  const open=ev=>{
+    ev&&ev.preventDefault();if(out.nextSibling&&out.nextSibling.tagName==='INPUT')return;
+    const inp=document.createElement('input');inp.type='number';inp.inputMode='numeric';inp.min=min;inp.max=max;inp.value=get();inp.className='numin';inp.setAttribute('aria-label','הקלדת מספר');
+    out.hidden=true;out.after(inp);inp.focus();inp.select();
+    let done=false;const fin=ok=>{if(done)return;done=true;if(ok){const v=Math.round(+inp.value);if(Number.isFinite(v)&&inp.value!=='')set(clamp(v,min,max));}inp.remove();out.hidden=false;};
+    inp.addEventListener('keydown',k=>{if(k.key==='Enter')fin(true);else if(k.key==='Escape')fin(false);});
+    inp.addEventListener('blur',()=>fin(true));
+  };
+  out.addEventListener('click',open);out.addEventListener('keydown',k=>{if(k.key==='Enter')open(k);});
+}
 
 /* ---------- drawing input ---------- */
 let lastInput='',act=null,lastPen=0,seenReal=false,lastStat=0;
@@ -820,7 +861,7 @@ stage.addEventListener('pointerdown',e=>{
     moveMark(x+cloneOff[0],y+cloneOff[1]);
   }
   let target=mctx;
-  if(b.layered){lctx.clearRect(0,0,W,H);live.style.opacity=st.opacity*(b.alpha||1)*active.opacity;liveMask(true);target=lctx;}
+  if(b.layered){lctx.clearRect(0,0,W,H);live.style.opacity=b.erase?0:st.opacity*(b.alpha||1)*active.opacity;liveMask(true);target=lctx;}
   act={id:e.pointerId,type:e.pointerType,b,x,y,t:e.timeStamp,v:0,sim:.55,pr:.55,stroke:new Stroke(b,target,{...st,off:cloneOff})};
   act.pr=pressure(e,act);act.stroke.add(x,y,act.pr);
 });
@@ -851,8 +892,16 @@ stage.addEventListener('pointermove',e=>{
     act.v=act.v*.7+sp*.3;act.pr=pressure(ev,act);act.stroke.add(x,y,act.pr);act.x=x;act.y=y;act.t=ev.timeStamp;
     if(act.b.clone&&cloneOff)moveMark(x+cloneOff[0],y+cloneOff[1]);
   }
-  if(sel&&!act.b.layered)enforceSel(act.stroke.takeBox()); // keeps the paint inside the selection while drawing
+  if(act.b.erase)eraseSync(act.stroke.takeBox());
+  else if(sel&&!act.b.layered)enforceSel(act.stroke.takeBox()); // keeps the paint inside the selection while drawing
 });
+/* the eraser draws a mask on the live canvas; the layer shows the committed pixels minus that mask at the chosen opacity */
+function eraseSync(bx){
+  if(!bx)return;const x=Math.max(0,Math.floor(bx[0]*DPR)),y=Math.max(0,Math.floor(bx[1]*DPR)),w=Math.min(main.width,Math.ceil(bx[2]*DPR))-x,h=Math.min(main.height,Math.ceil(bx[3]*DPR))-y;if(w<=0||h<=0)return;
+  mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalCompositeOperation='source-over';mctx.globalAlpha=1;mctx.clearRect(x,y,w,h);mctx.drawImage(shadow,x,y,w,h,x,y,w,h);
+  mctx.globalCompositeOperation='destination-out';mctx.globalAlpha=st.opacity;mctx.drawImage(live,x,y,w,h,x,y,w,h);mctx.restore();
+  if(sel)enforceSel(bx);
+}
 function end(e){
   touches.delete(e.pointerId);
   if(dead.delete(e.pointerId))return;
@@ -865,6 +914,7 @@ function end(e){
   if(a.selTool){endSelTool(a,e);return;}
   if(a.fill){if(e.type==='pointerup'&&!a.moved)doFill(a.x,a.y);return;}
   const box=a.stroke.finish(a.x,a.y,a.pr);
+  if(a.b.erase){eraseSync(a.stroke.takeBox());lctx.clearRect(0,0,W,H);liveMask(false);commitPatch(box);return;}
   if(a.b.layered){
     mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalAlpha=st.opacity*(a.b.alpha||1);mctx.globalCompositeOperation=a.b.cb||'source-over';
     if(a.b.soften)softenLive(box,a.stroke.s.size*(a.b.mul||1));
@@ -899,7 +949,7 @@ async function saveFile(type){
   if(!blob){msg.textContent='השמירה לא הצליחה.';return;}
   const name=stamp()+(type==='image/jpeg'?'.jpg':'.png'),a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),15000);
-  msg.textContent='הקובץ נשמר: '+name;
+  msg.textContent='הקובץ נשמר: '+name;setDirty(false);
 }
 $('#dl').addEventListener('click',()=>saveFile('image/png'));
 $('#dlj').addEventListener('click',()=>saveFile('image/jpeg'));
@@ -917,7 +967,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='20';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='21';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -939,6 +989,7 @@ function applyView(){
 }
 function viewAt(cx,cy,nz,na){const [px,py]=toPageS(cx,cy);vz=clamp(nz,MINZ,MAXZ);va=na;const [ox,oy]=rot(px*vz,py*vz,va);vx=cx-ox;vy=cy-oy;applyView();}
 const mid=()=>[stage.clientWidth/2,stage.clientHeight/2];
+editNum($('#zmOut'),20,600,()=>Math.round(vz*100),v=>{const [mx,my]=mid();viewAt(mx,my,v/100,va);});
 function fitView(){
   const sw=stage.clientWidth,sh=stage.clientHeight,c=Math.abs(Math.cos(va*RAD)),s=Math.abs(Math.sin(va*RAD)),bw=W*c+H*s,bh=W*s+H*c,m=24,ft=frameT()*2,top=56; // top: room for the tool bar
   vz=clamp(Math.min((sw-2*m)/(bw+ft),(sh-2*m-top)/(bh+ft)),MINZ,MAXZ);
@@ -1007,11 +1058,17 @@ function renderLayersUI(){mmMark();
     const op=document.createElement('input');op.type='range';op.className='lop';op.min=0;op.max=100;op.value=Math.round(L.opacity*100);op.setAttribute('aria-label','אטימות: '+L.name);
     const out=document.createElement('output');out.textContent=op.value+'%';
     op.addEventListener('input',()=>{L.opacity=op.value/100;styleLayer(L);out.textContent=op.value+'%';if(L===active&&act&&act.b&&act.b.layered)live.style.opacity=st.opacity*(act.b.alpha||1)*L.opacity;scheduleSave();});
+    editNum(out,0,100,()=>op.value,v=>{op.value=v;op.dispatchEvent(new Event('input'));});
     row.append(eye,lk,nm,op,out);llist.appendChild(row);
   }
   const i=layers.indexOf(active);
   $('#lUp').disabled=i>=layers.length-1;$('#lDown').disabled=i<=0;$('#lMerge').disabled=i<=0;$('#lDel').disabled=layers.length<2;
 }
+let lClrT=0;$('#lClr').addEventListener('click',()=>{
+  const b=$('#lClr');if(active.locked){layerMsg('השכבה נעולה.');return;}
+  if(!lClrT){b.textContent='לחצו שוב';b.classList.add('warn');lClrT=setTimeout(()=>{lClrT=0;b.textContent='נקה שכבה';b.classList.remove('warn');},2500);return;}
+  clearTimeout(lClrT);lClrT=0;b.textContent='נקה שכבה';b.classList.remove('warn');mctx.clearRect(0,0,W,H);commitPatch([0,0,W,H]);
+});
 $('#layersBtn').addEventListener('click',()=>setLayersPanel(lp.hidden));
 $('#lClose').addEventListener('click',()=>setLayersPanel(false));
 $('#lAdd').addEventListener('click',()=>{
@@ -1418,14 +1475,26 @@ async function loadDoc(d,replace){
 
 /* ---------- project file: save & reopen to continue ---------- */
 const blobToUrl=b=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(b);});
-$('#projSave').addEventListener('click',async()=>{
-  try{
+async function buildProject(){
     const ls=[];for(const L of layers){const blob=await new Promise(res=>L.cv.toBlob(res,'image/png'));if(!blob)throw 0;ls.push({name:L.name,visible:L.visible,locked:L.locked,opacity:L.opacity,png:await blobToUrl(blob)});}
     const doc={app:'OBPaint',v:1,w:W,h:H,fixed:pageFixed,paper:app.dataset.paper,view:{vx,vy,vz,va},color:st.color,brush:lastDrawBrush.id,size:st.size,active:layers.indexOf(active),layers:ls};
-    const blob=new Blob([JSON.stringify(doc)],{type:'application/octet-stream'}),a=document.createElement('a'),name=stamp()+'.obpaint';
+    return new Blob([JSON.stringify(doc)],{type:'application/octet-stream'});
+}
+async function saveProject(){
+  try{
+    const blob=await buildProject(),a=document.createElement('a'),name=stamp()+'.obpaint';
     a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),15000);
-    setDrawer(false);hint.textContent='נשמר קובץ עבודה: '+name;hint.hidden=false;setTimeout(hideHint,3500);
-  }catch(_){hint.textContent='שמירת קובץ העבודה לא הצליחה.';hint.hidden=false;}
+    setDirty(false);setDrawer(false);hint.textContent='נשמר קובץ עבודה: '+name;hint.hidden=false;setTimeout(hideHint,3500);return true;
+  }catch(_){hint.textContent='שמירת קובץ העבודה לא הצליחה.';hint.hidden=false;return false;}
+}
+$('#projSave').addEventListener('click',saveProject);
+if(!navigator.share)$('#projShare').hidden=true;
+$('#projShare').addEventListener('click',async()=>{
+  try{
+    const blob=await buildProject(),f=new File([blob],stamp()+'.obpaint',{type:'application/octet-stream'});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'קובץ עבודה'});setDirty(false);setDrawer(false);}
+    else{hint.textContent='השיתוף לא זמין כאן. אפשר לשמור עבודה ולהעביר ידנית.';hint.hidden=false;}
+  }catch(err){if(err&&err.name!=='AbortError'){hint.textContent='השיתוף לא הצליח.';hint.hidden=false;}}
 });
 $('#projOpen').addEventListener('click',()=>$('#projIn').click());
 $('#projIn').addEventListener('change',async e=>{
