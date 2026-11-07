@@ -284,6 +284,10 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
       <div class="stack">
         <label class="ctl" for="size"><span>גודל</span><input id="size" type="range" min="0" max="1000" value="95" aria-valuetext="6"><output id="sizeOut">6</output></label>
         <label class="ctl" for="fade" id="fadeCtl" hidden><span>רכות קצה</span><input id="fade" type="range" min="0" max="100" value="0"><output id="fadeOut">0</output></label>
+        <div id="advCtl" hidden>
+          <label class="ctl" for="step"><span>צעד</span><input id="step" type="range" min="1" max="1000" value="1"><output id="stepOut">1</output></label>
+          <button class="btn" id="advDir" aria-pressed="false">אחורה (פחות)</button>
+        </div>
         <label class="ctl" for="opac"><span>אטימות</span><input id="opac" type="range" min="5" max="100" value="100"><output id="opacOut">100</output></label>
         <label class="ctl" for="smooth"><span>החלקה</span><input id="smooth" type="range" min="0" max="90" value="30"><output id="smoothOut">30</output></label>
         <label class="ctl" for="tol"><span>סבירות צבע</span><input id="tol" type="range" min="0" max="120" value="32"><output id="tolOut">32</output></label>
@@ -506,6 +510,7 @@ const BR=[
  {id:'burn',name:'הכהיה',size:40,pv:20,sp:.08,noPv:true,
   dab(c,p){const r=p.s*.5;c.save();c.globalCompositeOperation='source-atop';const g=c.createRadialGradient(p.x,p.y,0,p.x,p.y,r),k=p.base*.14*(.4+.6*p.pr);
     g.addColorStop(0,'rgba(0,0,0,'+k+')');g.addColorStop(.6,'rgba(0,0,0,'+k*.7+')');g.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=g;c.beginPath();c.arc(p.x,p.y,r,0,TAU);c.fill();c.restore();}},
+ {id:'advance',name:'קידום צבע',size:30,pv:20,sp:.04,adv:true,noPv:true,dab(){}},
  {id:'dodge',name:'הבהרה',size:40,pv:20,sp:.08,noPv:true,
   dab(c,p){const r=p.s*.5;c.save();c.globalCompositeOperation='source-atop';const g=c.createRadialGradient(p.x,p.y,0,p.x,p.y,r),k=p.base*.14*(.4+.6*p.pr);
     g.addColorStop(0,'rgba(255,255,255,'+k+')');g.addColorStop(.6,'rgba(255,255,255,'+k*.7+')');g.addColorStop(1,'rgba(255,255,255,0)');c.fillStyle=g;c.beginPath();c.arc(p.x,p.y,r,0,TAU);c.fill();c.restore();}},
@@ -602,7 +607,25 @@ class Stroke{
     if(!d)this.dbox=[x-m,y-m,x+m,y+m];else{d[0]=Math.min(d[0],x-m);d[1]=Math.min(d[1],y-m);d[2]=Math.max(d[2],x+m);d[3]=Math.max(d[3],y+m);}
   }
   takeBox(){const d=this.dbox;this.dbox=null;return d;}
+  advDab(x,y){
+    const c=this.c,cv=c.canvas,s=this.s,rd=Math.max(.5,s.size*.5*DPR),cx=x*DPR,cy=y*DPR;
+    const x0=Math.max(0,Math.floor(cx-rd)),y0=Math.max(0,Math.floor(cy-rd)),x1=Math.min(cv.width,Math.ceil(cx+rd)),y1=Math.min(cv.height,Math.ceil(cy+rd)),w=x1-x0,h=y1-y0;
+    if(w>0&&h>0){
+      if(!this.aw)this.aw=new Uint8Array(cv.width*cv.height);
+      const im=c.getImageData(x0,y0,w,h),d=im.data,aw=this.aw,soft=clamp((s.fade||0)/100,0,1),step=Math.max(1,s.step||1)*(s.advDir<0?-1:1);
+      for(let j=0;j<h;j++)for(let i=0;i<w;i++){
+        const dist=Math.hypot(x0+i+.5-cx,y0+j+.5-cy);if(dist>rd)continue;
+        const wt=soft>0?clamp((rd-dist)/(rd*soft),0,1):1,w8=Math.round(wt*255),k=(y0+j)*cv.width+x0+i;
+        if(w8<=aw[k])continue;const o=(j*w+i)*4;if(d[o+3]===0){aw[k]=w8;continue;}
+        const dl=Math.round(step*w8/255)-Math.round(step*aw[k]/255);aw[k]=w8;if(!dl)continue;
+        let n=((d[o]<<16)|(d[o+1]<<8)|d[o+2])+dl;n=((n%16777216)+16777216)%16777216;d[o]=n>>16;d[o+1]=(n>>8)&255;d[o+2]=n&255;
+      }
+      c.save();c.setTransform(1,0,0,1,0,0);c.putImageData(im,x0,y0);c.restore();
+    }
+    const m=s.size*.5+4,bx=this.box;bx[0]=Math.min(bx[0],x-m);bx[1]=Math.min(bx[1],y-m);bx[2]=Math.max(bx[2],x+m);bx[3]=Math.max(bx[3],y+m);
+  }
   dab0(x,y,pr,ang){
+    if(this.b.adv){this.advDab(x,y);return;}
     if(this.b.fx){this.fxDab(x,y,pr);return;}
     if(this.b.clone){this.cloneDab(x,y,pr);return;}
     if(this.b.smudge){this.smudgeDab(x,y,pr);return;}
@@ -658,7 +681,7 @@ function fit(){
 new ResizeObserver(fit).observe(stage);
 
 /* ---------- state & UI ---------- */
-const st={...paint('#14181c'),fade:0,opacity:1,smooth:.7,size:6,pmode:'auto',palm:true};
+const st={...paint('#14181c'),step:1,advDir:1,fade:0,opacity:1,smooth:.7,size:6,pmode:'auto',palm:true};
 let cur=BR[0];
 st.size=cur.size;
 const COLORS=[['#14181c','שחור'],['#e5484d','אדום'],['#f76b15','כתום'],['#ffc53d','צהוב'],['#30a46c','ירוק'],['#12a594','טורקיז'],['#0090ff','כחול'],['#6e56cf','סגול'],['#e93d82','ורוד'],['#7d5a3c','חום'],['#ffffff','לבן']];
@@ -757,10 +780,10 @@ function blurInto(ctx,src,sg){
   c.drawImage(src,0,0,1,1,0,0,M,M);c.drawImage(src,w-1,0,1,1,M+w,0,M,M);c.drawImage(src,0,h-1,1,1,0,M+h,M,M);c.drawImage(src,w-1,h-1,1,1,M+w,M+h,M,M);
   ctx.filter=`blur(${sg}px)`;ctx.drawImage(t,-M,-M);ctx.filter='none';
 }
-function fadeOk(b){return !!(b.layered&&!b.erase&&!b.soften);}
-function fadePx(b){return fadeOk(b)?st.fade/100*st.size*.35*(b.mul||1):0;}
+function fadeOk(b){return !!((b.layered&&!b.erase&&!b.soften)||b.adv);}
+function fadePx(b){return fadeOk(b)&&!b.adv?st.fade/100*st.size*.35*(b.mul||1):0;}
 function selectBrush(b){
-  cur=b;$('#fadeCtl').hidden=!fadeOk(b);if(!b.pick)lastDrawBrush=b;
+  cur=b;$('#fadeCtl').hidden=!fadeOk(b);$('#advCtl').hidden=!b.adv;if(!b.pick)lastDrawBrush=b;
   BR.forEach(x=>x.el.setAttribute('aria-pressed',x===b?'true':'false'));st.size=b.size;setSizeUI(b.size);
   if(b.pick||b.clone||b.sel)setDrawer(false);
   if(!b.sel||b.sel!=='poly')cancelPoly();
@@ -824,6 +847,8 @@ $('#size').addEventListener('input',()=>{const z=sizeFromPos(+$('#size').value);
 const bind=(id,fn)=>{const el=$('#'+id);el.addEventListener('input',()=>{fn(+el.value);$('#'+id+'Out').textContent=el.value;});};
 bind('opac',v=>{st.opacity=v/100;});
 bind('fade',v=>{st.fade=v;});
+bind('step',v=>{st.step=v;});editNum($('#stepOut'),1,1000,()=>$('#step').value,v=>{const e=$('#step');e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));});
+$('#advDir').addEventListener('click',()=>{st.advDir=st.advDir<0?1:-1;$('#advDir').setAttribute('aria-pressed',st.advDir<0?'true':'false');});
 editNum($('#fadeOut'),0,100,()=>$('#fade').value,v=>{const e=$('#fade');e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));});
 {const dir=(id,min,max)=>{const el=$('#'+id);editNum($('#'+id+'Out'),min,max,()=>el.value,v=>{el.value=v;el.dispatchEvent(new Event('input',{bubbles:true}));});};
  dir('opac',5,100);dir('smooth',0,90);dir('tol',0,120);
@@ -1108,7 +1133,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='33';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='34';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
