@@ -343,6 +343,16 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 
   <div class="sheet" id="upd" hidden><div class="card" role="dialog" aria-label="עדכון"><p id="updMsg">יש גרסה חדשה של האפליקציה.</p><div class="row"><button class="btn" id="updGo">עדכן עכשיו</button><button class="btn" id="updLater">אחר כך</button></div></div></div>
 
+  <div class="sheet" id="nm" hidden>
+    <div class="card" role="dialog" aria-label="שם הקובץ">
+      <p>שם הקובץ</p>
+      <input id="nmIn" type="text" maxlength="80" autocomplete="off" spellcheck="false" dir="ltr" style="width:100%;min-height:44px;font:500 15px var(--f-mono);background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:0 10px;box-sizing:border-box">
+      <div class="row">
+        <button class="btn" id="nmOk">אישור</button>
+        <button class="btn" id="nmNo">ביטול</button>
+      </div>
+    </div>
+  </div>
   <div class="sheet" id="shr" hidden>
     <div class="card" role="dialog" aria-label="שיתוף עבודה">
       <p id="shrMsg"></p>
@@ -1061,7 +1071,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='28';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='29';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1574,23 +1584,35 @@ async function buildProject(){
     const doc={app:'OBPaint',v:1,w:W,h:H,fixed:pageFixed,paper:app.dataset.paper,view:{vx,vy,vz,va},color:st.color,brush:lastDrawBrush.id,size:st.size,active:layers.indexOf(active),layers:ls};
     return new Blob([JSON.stringify(doc)],{type:'application/octet-stream'});
 }
-async function saveProject(){
+/* file-name prompt: suggests the default name, editable */
+function askName(){
+  return new Promise(res=>{
+    const box=$('#nm'),inp=$('#nmIn');inp.value=stamp();box.hidden=false;setTimeout(()=>{inp.focus();inp.select();},50);
+    const done=v=>{box.hidden=true;$('#nmOk').onclick=$('#nmNo').onclick=inp.onkeydown=null;
+      if(v===null)return res(null);let n=v.replace(/\.(obpaint)?(\.txt)?$/i,'').replace(/[\\\/:*?"<>|\u0000-\u001f]/g,'').trim().slice(0,80);res(n||stamp());};
+    $('#nmOk').onclick=()=>done(inp.value);$('#nmNo').onclick=()=>done(null);inp.onkeydown=e=>{if(e.key==='Enter')done(inp.value);else if(e.key==='Escape')done(null);};
+  });
+}
+async function saveProject(base){
+  if(typeof base!=='string'){base=await askName();if(base===null)return false;}
   try{
-    const blob=await buildProject(),a=document.createElement('a'),name=stamp()+'.obpaint';
+    const blob=await buildProject(),a=document.createElement('a'),name=base+'.obpaint';
     a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),15000);
     setDirty(false);setDrawer(false);hint.textContent='נשמר קובץ עבודה: '+name;hint.hidden=false;setTimeout(hideHint,3500);return true;
   }catch(_){hint.textContent='שמירת קובץ העבודה לא הצליחה.';hint.hidden=false;return false;}
 }
-$('#projSave').addEventListener('click',saveProject);
+$('#projSave').addEventListener('click',()=>{saveProject();});
 /* the share sheet needs a fresh tap, so the file is prepared in advance when the menu opens */
 function warmProj(){if(projCache||projWarm)return;projWarm=setTimeout(async()=>{projWarm=0;try{projCache=await buildProject();}catch(_){}},400);}
 const shr=$('#shr'),shrMsg=$('#shrMsg'),shrGo=$('#shrGo');
+let shareBase='';
 async function doShare(){
   const blob=projCache||await buildProject();projCache=blob;
-  const name=stamp()+'.obpaint.txt',f=new File([blob],name,{type:'text/plain'}); // Android only shares allow-listed file types, .txt is accepted
+  const name=(shareBase||stamp())+'.obpaint.txt',f=new File([blob],name,{type:'text/plain'}); // Android only shares allow-listed file types, .txt is accepted
   await navigator.share({files:[f]});setDirty(false);
 }
 $('#projShare').addEventListener('click',async()=>{
+  const nb=await askName();if(nb===null)return;shareBase=nb;
   try{await doShare();setDrawer(false);}
   catch(err){
     if(err&&err.name==='AbortError')return;
