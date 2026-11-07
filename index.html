@@ -248,8 +248,8 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
   <div class="pill sbar" id="shbar" hidden role="group" aria-label="צורות">
     <div class="shtypes" id="shtypes"></div>
     <div class="shrow">
-      <button class="btn shb" id="shS" aria-pressed="true">קו</button><input type="color" id="shSc" aria-label="צבע הקו">
-      <button class="btn shb" id="shF" aria-pressed="false">מילוי</button><input type="color" id="shFc" aria-label="צבע המילוי" value="#ffffff">
+      <button class="btn shb" id="shS" aria-pressed="true">קו</button><button type="button" class="btn cpbtn" id="shSc" aria-label="צבע הקו" title="צבע הקו"><span class="cpdot"></span></button>
+      <button class="btn shb" id="shF" aria-pressed="false">מילוי</button><button type="button" class="btn cpbtn" id="shFc" aria-label="צבע המילוי" title="צבע המילוי"><span class="cpdot" style="background:#ffffff"></span></button>
       <span class="shnote">עובי הקו: סליידר הגודל</span>
     </div>
   </div>
@@ -684,8 +684,27 @@ SHAPES.forEach(([id,nm])=>{const b=document.createElement('button');b.type='butt
 function shSync(){$('#shS').setAttribute('aria-pressed',shp.stroke?'true':'false');$('#shF').setAttribute('aria-pressed',shp.fill?'true':'false');}
 $('#shS').addEventListener('click',()=>{shp.stroke=!shp.stroke;if(!shp.stroke&&!shp.fill)shp.fill=true;shSync();});
 $('#shF').addEventListener('click',()=>{shp.fill=!shp.fill;if(!shp.fill&&!shp.stroke)shp.stroke=true;shSync();});
-$('#shSc').addEventListener('input',e=>{shp.sc=e.target.value;});$('#shFc').addEventListener('input',e=>{shp.fc=e.target.value;});
-function updateShapeUI(canShow,pillShown){shbar.hidden=!(cur.shape&&canShow);if(!shbar.hidden){if(!shp.sc)$('#shSc').value=st.color;shbar.style.bottom='calc(70px + env(safe-area-inset-bottom, 0px))';shSync();}}
+/* the same colour picker as the main one (colour square + hue + hex), for any custom colour */
+function openColorPop(start,onChange){
+  const ov=document.createElement('div');ov.className='sheet';ov.style.zIndex=30;
+  ov.innerHTML='<div class="card" role="dialog" aria-label="צבע מותאם אישית" style="width:min(340px,100%)"><div class="cp" dir="ltr" style="margin:0"><div class="sv"><div class="svt"></div></div><input class="hue" type="range" min="0" max="360" step="1" value="0" aria-label="גוון"><input class="hex" maxlength="7" spellcheck="false" autocomplete="off" aria-label="קוד צבע"></div><button type="button" class="btn">סגור</button></div>';
+  document.body.appendChild(ov);
+  const svE=ov.querySelector('.sv'),tE=ov.querySelector('.svt'),hE=ov.querySelector('.hue'),xE=ov.querySelector('.hex');
+  let [h,sa,v]=rgb2hsv(hex2rgb(start));
+  const draw=()=>{svE.style.setProperty('--hc',`hsl(${h},100%,50%)`);tE.style.left=sa*100+'%';tE.style.top=(1-v)*100+'%';hE.value=Math.round(h);};
+  const push=()=>{const x=hsv2hex(h,sa,v);if(document.activeElement!==xE)xE.value=x;draw();onChange(x);};
+  const mv=e=>{const r=svE.getBoundingClientRect();sa=clamp((e.clientX-r.left)/r.width,0,1);v=1-clamp((e.clientY-r.top)/r.height,0,1);push();};
+  svE.addEventListener('pointerdown',e=>{e.preventDefault();try{svE.setPointerCapture(e.pointerId);}catch(_){}mv(e);});
+  svE.addEventListener('pointermove',e=>{if(svE.hasPointerCapture&&svE.hasPointerCapture(e.pointerId))mv(e);});
+  hE.addEventListener('input',()=>{h=+hE.value;push();});
+  xE.addEventListener('input',()=>{const t=xE.value.trim().replace(/^#?/,'#').toLowerCase();if(/^#[0-9a-f]{6}$/.test(t)){[h,sa,v]=rgb2hsv(hex2rgb(t));draw();onChange(t);}});
+  const close=()=>ov.remove();ov.querySelector('button').addEventListener('click',close);ov.addEventListener('pointerdown',e=>{if(e.target===ov)close();});
+  xE.value=start;draw();
+}
+const dotOf=id=>$('#'+id+' .cpdot');
+$('#shSc').addEventListener('click',()=>openColorPop(shp.sc||st.color,x=>{shp.sc=x;shp.stroke=true;dotOf('shSc').style.background=x;shSync();}));
+$('#shFc').addEventListener('click',()=>openColorPop(shp.fc,x=>{shp.fc=x;shp.fill=true;dotOf('shFc').style.background=x;shSync();}));
+function updateShapeUI(canShow,pillShown){shbar.hidden=!(cur.shape&&canShow);if(!shbar.hidden){if(!shp.sc)dotOf('shSc').style.background=st.color;shbar.style.bottom='calc(70px + env(safe-area-inset-bottom, 0px))';shSync();}}
 function shpPath(c,t,x0,y0,x1,y1,lw){
   let x=Math.min(x0,x1),y=Math.min(y0,y1),w=Math.abs(x1-x0),h=Math.abs(y1-y0);
   c.beginPath();
@@ -1032,7 +1051,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='23';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='24';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
