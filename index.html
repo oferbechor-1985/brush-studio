@@ -169,6 +169,13 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 .lacts{display:flex;flex-wrap:wrap;gap:6px}
 .lacts .btn{min-width:44px;padding:0 10px}
 #lMsg{margin:0;min-height:1.2em;font-size:12px;color:var(--muted)}
+.shtypes{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.shtypes .btn{min-width:44px;padding:0 10px}
+.shrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+.shrow input[type=color]{width:44px;height:44px;padding:2px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.shnote{font-size:11px;color:var(--muted)}
+#shbar{flex-direction:column}
+.btn[aria-pressed=true].shb{background:var(--accent);color:var(--on-accent,#fff)}
 .mm{position:fixed;z-index:9;left:10px;top:64px;border:1px solid var(--line);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.4);touch-action:none;background:#fff;cursor:pointer}
 .mm[hidden]{display:none}
 .sbar{flex-wrap:wrap;justify-content:center;border-radius:18px;padding:6px 10px}
@@ -238,6 +245,14 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
   <div class="pill" id="pill" hidden><span id="pillTxt"></span><button class="btn" id="pillBtn" hidden>מקור חדש</button></div>
   <div class="loupe" id="loupe" hidden></div>
   <canvas class="mm" id="mm" hidden aria-label="מפת ניווט"></canvas>
+  <div class="pill sbar" id="shbar" hidden role="group" aria-label="צורות">
+    <div class="shtypes" id="shtypes"></div>
+    <div class="shrow">
+      <button class="btn shb" id="shS" aria-pressed="true">קו</button><input type="color" id="shSc" aria-label="צבע הקו">
+      <button class="btn shb" id="shF" aria-pressed="false">מילוי</button><input type="color" id="shFc" aria-label="צבע המילוי" value="#ffffff">
+      <span class="shnote">עובי הקו: סליידר הגודל</span>
+    </div>
+  </div>
   <div class="pill sbar" id="sbar" hidden role="group" aria-label="בחירה">
     <span id="sTxt"></span>
     <button class="btn" id="sMode" title="איך בחירה חדשה משתלבת עם הקיימת">חדש</button>
@@ -462,9 +477,16 @@ const BR=[
  {id:'halftone',name:'הלפטון',size:30,pv:16,sp:.12,layered:true,
   dab(c,p){const g=Math.max(4,p.s*.3),cx=(Math.floor(p.x/g)+.5)*g,cy=(Math.floor(p.y/g)+.5)*g;c.fillStyle=p.color;c.beginPath();c.arc(cx,cy,g*.5*(.25+.75*p.pr),0,TAU);c.fill();}},
  {id:'smudge',name:'מריחה',size:36,pv:20,sp:.06,smudge:true,noPv:true,dab(){}},
+ {id:'shape',name:'צורות',size:6,pv:6,sp:1,shape:true,noPv:true,dab(){}},
  {id:'fill',name:'דלי צבע',size:1,pv:1,fill:true,noPv:true,dab(){}},
  {id:'blur',name:'טשטוש',size:40,pv:20,sp:.1,fx:'blur',noPv:true,dab(){}},
  {id:'sharpen',name:'חדות',size:40,pv:20,sp:.1,fx:'sharpen',noPv:true,dab(){}},
+ {id:'burn',name:'הכהיה',size:40,pv:20,sp:.08,noPv:true,
+  dab(c,p){const r=p.s*.5;c.save();c.globalCompositeOperation='source-atop';const g=c.createRadialGradient(p.x,p.y,0,p.x,p.y,r),k=p.base*.14*(.4+.6*p.pr);
+    g.addColorStop(0,'rgba(0,0,0,'+k+')');g.addColorStop(.6,'rgba(0,0,0,'+k*.7+')');g.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=g;c.beginPath();c.arc(p.x,p.y,r,0,TAU);c.fill();c.restore();}},
+ {id:'dodge',name:'הבהרה',size:40,pv:20,sp:.08,noPv:true,
+  dab(c,p){const r=p.s*.5;c.save();c.globalCompositeOperation='source-atop';const g=c.createRadialGradient(p.x,p.y,0,p.x,p.y,r),k=p.base*.14*(.4+.6*p.pr);
+    g.addColorStop(0,'rgba(255,255,255,'+k+')');g.addColorStop(.6,'rgba(255,255,255,'+k*.7+')');g.addColorStop(1,'rgba(255,255,255,0)');c.fillStyle=g;c.beginPath();c.arc(p.x,p.y,r,0,TAU);c.fill();c.restore();}},
  {id:'clone',name:'שכפול',size:40,pv:20,sp:.08,clone:true,noPv:true,dab(){}},
  {id:'pick',name:'פיפטה',size:1,pv:1,pick:true,noPv:true,dab(){}},
  {id:'selrect',name:'בחירה: מלבן',size:1,pv:1,sel:'rect',noPv:true,dab(){}},
@@ -650,9 +672,42 @@ function updateCloneUI(){
   const panels=!drawerOpen&&$('#vp').hidden&&$('#lp').hidden&&!framing,on=cur.clone&&panels,need=!cloneSrc||cloneArm;
   pill.hidden=!on;pillTxt.textContent=need?'הקישו על האזור שרוצים לשכפל ממנו':'משכפלים מהנקודה המסומנת';pillBtn.hidden=need;
   if(!cur.clone||!cloneSrc)cmark.hidden=true;
-  updateSelUI(panels,on);
+  updateSelUI(panels,on);updateShapeUI(panels,on);
 }
 pillBtn.addEventListener('click',()=>{cloneArm=true;updateCloneUI();});
+/* ---------- shapes ---------- */
+const SHAPES=[['line','קו'],['rect','מלבן'],['ellipse','אליפסה'],['circle','עיגול'],['tri','משולש'],['diamond','מעוין'],['star','כוכב'],['arrow','חץ']];
+const shp={type:'rect',stroke:true,fill:false,sc:null,fc:'#ffffff'};
+const shbar=$('#shbar');
+SHAPES.forEach(([id,nm])=>{const b=document.createElement('button');b.type='button';b.className='btn shb';b.textContent=nm;b.dataset.s=id;b.setAttribute('aria-pressed',id===shp.type?'true':'false');
+  b.addEventListener('click',()=>{shp.type=id;shbar.querySelectorAll('.shb').forEach(x=>x.setAttribute('aria-pressed',x.dataset.s===id?'true':'false'));});$('#shtypes').appendChild(b);});
+function shSync(){$('#shS').setAttribute('aria-pressed',shp.stroke?'true':'false');$('#shF').setAttribute('aria-pressed',shp.fill?'true':'false');}
+$('#shS').addEventListener('click',()=>{shp.stroke=!shp.stroke;if(!shp.stroke&&!shp.fill)shp.fill=true;shSync();});
+$('#shF').addEventListener('click',()=>{shp.fill=!shp.fill;if(!shp.fill&&!shp.stroke)shp.stroke=true;shSync();});
+$('#shSc').addEventListener('input',e=>{shp.sc=e.target.value;});$('#shFc').addEventListener('input',e=>{shp.fc=e.target.value;});
+function updateShapeUI(canShow,pillShown){shbar.hidden=!(cur.shape&&canShow);if(!shbar.hidden){if(!shp.sc)$('#shSc').value=st.color;shbar.style.bottom='calc(70px + env(safe-area-inset-bottom, 0px))';shSync();}}
+function shpPath(c,t,x0,y0,x1,y1,lw){
+  let x=Math.min(x0,x1),y=Math.min(y0,y1),w=Math.abs(x1-x0),h=Math.abs(y1-y0);
+  c.beginPath();
+  if(t==='circle'){const d=Math.max(w,h);x=x1>=x0?x0:x0-d;y=y1>=y0?y0:y0-d;w=h=d;c.ellipse(x+d/2,y+d/2,d/2,d/2,0,0,TAU);}
+  else if(t==='ellipse')c.ellipse(x+w/2,y+h/2,w/2,h/2,0,0,TAU);
+  else if(t==='rect')c.rect(x,y,w,h);
+  else if(t==='tri'){c.moveTo(x+w/2,y);c.lineTo(x+w,y+h);c.lineTo(x,y+h);c.closePath();}
+  else if(t==='diamond'){c.moveTo(x+w/2,y);c.lineTo(x+w,y+h/2);c.lineTo(x+w/2,y+h);c.lineTo(x,y+h/2);c.closePath();}
+  else if(t==='star'){for(let i=0;i<10;i++){const r=i%2?.4:1,a=-Math.PI/2+i*Math.PI/5,px=x+w/2+Math.cos(a)*r*w/2,py=y+h/2+Math.sin(a)*r*h/2;i?c.lineTo(px,py):c.moveTo(px,py);}c.closePath();}
+  else{ // line / arrow
+    c.moveTo(x0,y0);c.lineTo(x1,y1);
+    if(t==='arrow'){const a=Math.atan2(y1-y0,x1-x0),hl=Math.max(14,lw*4,Math.hypot(x1-x0,y1-y0)*.12);c.moveTo(x1-Math.cos(a-.5)*hl,y1-Math.sin(a-.5)*hl);c.lineTo(x1,y1);c.lineTo(x1-Math.cos(a+.5)*hl,y1-Math.sin(a+.5)*hl);}
+  }
+}
+function drawShape(c,a){
+  const line=shp.type==='line'||shp.type==='arrow',lw=st.size;
+  c.save();c.lineJoin='round';c.lineCap='round';c.lineWidth=lw;shpPath(c,shp.type,a.x0,a.y0,a.x,a.y,lw);
+  if(shp.fill&&!line){c.fillStyle=shp.fc;c.fill();}
+  if(shp.stroke||line){c.strokeStyle=shp.sc||st.color;c.stroke();}
+  c.restore();
+}
+function shapePreview(a){lctx.clearRect(0,0,W,H);drawShape(lctx,a);live.style.opacity=st.opacity*active.opacity;liveMask(true);}
 function selectBrush(b){
   cur=b;if(!b.pick)lastDrawBrush=b;
   BR.forEach(x=>x.el.setAttribute('aria-pressed',x===b?'true':'false'));st.size=b.size;setSizeUI(b.size);
@@ -665,6 +720,7 @@ let pvQ=0;function queuePreviews(){if(pvQ)return;pvQ=requestAnimationFrame(()=>{
 function pvIcon(c,b,w,h){
   const fg=getComputedStyle(app).getPropertyValue('--muted').trim()||'#888';
   c.strokeStyle=fg;c.lineWidth=2;c.lineCap='round';c.lineJoin='round';
+  if(b.shape){c.beginPath();c.rect(w/2-15,h/2-3,16,13);c.moveTo(w/2+15,h/2+2);c.arc(w/2+7,h/2+2,8,0,TAU);c.stroke();return;}
   if(b.sel){
     c.setLineDash([4,3]);c.beginPath();
     if(b.sel==='rect')c.rect(w/2-14,h/2-10,28,20);
@@ -818,6 +874,7 @@ function cancelStroke(){
   if(a.pick){loupe.hidden=true;return;}
   if(a.selTool){renderSel();return;}
   if(a.fill)return;
+  if(a.shape){lctx.clearRect(0,0,W,H);liveMask(false);return;}
   if(a.b.layered){lctx.clearRect(0,0,W,H);liveMask(false);return;}
   const r=devRect(a.stroke.box);if(!r)return;
   mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalAlpha=1;mctx.globalCompositeOperation='source-over';
@@ -850,6 +907,7 @@ stage.addEventListener('pointerdown',e=>{
   try{stage.setPointerCapture(e.pointerId);}catch(_){}
   resetClear();hideHint();
   if(b.fill){act={id:e.pointerId,type:e.pointerType,fill:true,x,y,cx:e.clientX,cy:e.clientY,moved:false};return;}
+  if(b.shape){act={id:e.pointerId,type:e.pointerType,shape:true,x0:x,y0:y,x,y,moved:false};lctx.clearRect(0,0,W,H);return;}
   if(b.sel){
     if(b.sel==='rect'||b.sel==='lasso'){act={id:e.pointerId,type:e.pointerType,selTool:b.sel,pts:[[x,y]],x0:x,y0:y,x,y};return;}
     act={id:e.pointerId,type:e.pointerType,selTool:b.sel,tap:true,x,y,cx:e.clientX,cy:e.clientY,moved:false};return;
@@ -885,6 +943,7 @@ stage.addEventListener('pointermove',e=>{
     renderSel(act.selTool==='rect'?{kind:'rect',a:[act.x0,act.y0,x,y]}:{kind:'lasso',pts:act.pts});return;
   }
   if(act.fill){if(Math.hypot(e.clientX-act.cx,e.clientY-act.cy)>12)act.moved=true;return;}
+  if(act.shape){const [x,y]=pos(e);act.x=x;act.y=y;if(Math.hypot(x-act.x0,y-act.y0)>3)act.moved=true;if(act.moved)shapePreview(act);return;}
   if(e.pointerType==='pen')lastPen=performance.now();
   const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
   for(const ev of (evs.length?evs:[e])){
@@ -913,6 +972,12 @@ function end(e){
   if(a.pick){loupe.hidden=true;selectBrush(lastDrawBrush);return;}
   if(a.selTool){endSelTool(a,e);return;}
   if(a.fill){if(e.type==='pointerup'&&!a.moved)doFill(a.x,a.y);return;}
+  if(a.shape){
+    if(e.type!=='pointerup'||!a.moved){lctx.clearRect(0,0,W,H);liveMask(false);return;}
+    const m=st.size/2+6,bx=[clamp(Math.min(a.x0,a.x)-m-20,0,W),clamp(Math.min(a.y0,a.y)-m-20,0,H),clamp(Math.max(a.x0,a.x)+m+20,0,W),clamp(Math.max(a.y0,a.y)+m+20,0,H)];
+    mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalAlpha=st.opacity;mctx.globalCompositeOperation='source-over';mctx.drawImage(live,0,0);mctx.restore();
+    lctx.clearRect(0,0,W,H);liveMask(false);commitPatch(bx);return;
+  }
   const box=a.stroke.finish(a.x,a.y,a.pr);
   if(a.b.erase){eraseSync(a.stroke.takeBox());lctx.clearRect(0,0,W,H);liveMask(false);commitPatch(box);return;}
   if(a.b.layered){
@@ -967,7 +1032,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='21';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='23';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
