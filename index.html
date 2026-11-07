@@ -343,6 +343,15 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 
   <div class="sheet" id="upd" hidden><div class="card" role="dialog" aria-label="עדכון"><p id="updMsg">יש גרסה חדשה של האפליקציה.</p><div class="row"><button class="btn" id="updGo">עדכן עכשיו</button><button class="btn" id="updLater">אחר כך</button></div></div></div>
 
+  <div class="sheet" id="shr" hidden>
+    <div class="card" role="dialog" aria-label="שיתוף עבודה">
+      <p id="shrMsg"></p>
+      <div class="row">
+        <button class="btn" id="shrGo">שתף עכשיו</button>
+        <button class="btn" id="shrClose">סגור</button>
+      </div>
+    </div>
+  </div>
   <div class="sheet" id="nd" hidden>
     <div class="card" role="dialog" aria-label="ציור חדש">
       <p>הציור הנוכחי לא נשמר. לשמור אותו לפני שמתחילים ציור חדש?</p>
@@ -1052,7 +1061,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='26';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='27';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1575,19 +1584,26 @@ async function saveProject(){
 $('#projSave').addEventListener('click',saveProject);
 /* the share sheet needs a fresh tap, so the file is prepared in advance when the menu opens */
 function warmProj(){if(projCache||projWarm)return;projWarm=setTimeout(async()=>{projWarm=0;try{projCache=await buildProject();}catch(_){}},400);}
+const shr=$('#shr'),shrMsg=$('#shrMsg'),shrGo=$('#shrGo');
+async function doShare(){
+  const blob=projCache||await buildProject();projCache=blob;
+  const name=stamp()+'.obpaint',f=new File([blob],name,{type:'text/plain'});
+  await navigator.share({files:[f],title:name});setDirty(false);
+}
 $('#projShare').addEventListener('click',async()=>{
-  const say=t=>{setDrawer(false);hint.textContent=t;hint.hidden=false;setTimeout(hideHint,6000);};
-  try{
-    const blob=projCache||await buildProject();projCache=blob;
-    const name=stamp()+'.obpaint',f=new File([blob],name,{type:'text/plain'});
-    await navigator.share({files:[f],title:name});setDirty(false);setDrawer(false);
-  }catch(err){
+  try{await doShare();setDrawer(false);}
+  catch(err){
     if(err&&err.name==='AbortError')return;
-    const n=err&&err.name||'?';
-    if(n==='NotAllowedError'&&projCache){say('הקובץ מוכן. לחצו שוב על "שתף עבודה".');return;}
-    say('השיתוף נכשל ('+n+'). השתמשו ב"שמור עבודה" והעבירו את הקובץ ידנית.');
+    setDrawer(false);const n=err&&err.name||'?';
+    shrMsg.textContent=n==='NotAllowedError'&&projCache?'הקובץ מוכן לשיתוף.':'השיתוף נכשל ('+n+'). אפשר לנסות שוב, או להשתמש ב"שמור עבודה" ולהעביר את הקובץ ידנית.';
+    shrGo.hidden=!projCache;shr.hidden=false;
   }
 });
+shrGo.addEventListener('click',async()=>{
+  try{await doShare();shr.hidden=true;}
+  catch(err){if(err&&err.name==='AbortError'){shr.hidden=true;return;}shrMsg.textContent='השיתוף נכשל ('+(err&&err.name||'?')+'). השתמשו ב"שמור עבודה" והעבירו את הקובץ ידנית.';}
+});
+$('#shrClose').addEventListener('click',()=>{shr.hidden=true;});
 $('#projOpen').addEventListener('click',()=>$('#projIn').click());
 $('#projIn').addEventListener('change',async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
