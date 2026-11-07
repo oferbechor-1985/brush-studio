@@ -283,6 +283,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
     <section><h2>קו</h2>
       <div class="stack">
         <label class="ctl" for="size"><span>גודל</span><input id="size" type="range" min="0" max="1000" value="95" aria-valuetext="6"><output id="sizeOut">6</output></label>
+        <label class="ctl" for="fade" id="fadeCtl" hidden><span>רכות קצה</span><input id="fade" type="range" min="0" max="100" value="0"><output id="fadeOut">0</output></label>
         <label class="ctl" for="opac"><span>אטימות</span><input id="opac" type="range" min="5" max="100" value="100"><output id="opacOut">100</output></label>
         <label class="ctl" for="smooth"><span>החלקה</span><input id="smooth" type="range" min="0" max="90" value="30"><output id="smoothOut">30</output></label>
         <label class="ctl" for="tol"><span>סבירות צבע</span><input id="tol" type="range" min="0" max="120" value="32"><output id="tolOut">32</output></label>
@@ -657,7 +658,7 @@ function fit(){
 new ResizeObserver(fit).observe(stage);
 
 /* ---------- state & UI ---------- */
-const st={...paint('#14181c'),opacity:1,smooth:.7,size:6,pmode:'auto',palm:true};
+const st={...paint('#14181c'),fade:0,opacity:1,smooth:.7,size:6,pmode:'auto',palm:true};
 let cur=BR[0];
 st.size=cur.size;
 const COLORS=[['#14181c','שחור'],['#e5484d','אדום'],['#f76b15','כתום'],['#ffc53d','צהוב'],['#30a46c','ירוק'],['#12a594','טורקיז'],['#0090ff','כחול'],['#6e56cf','סגול'],['#e93d82','ורוד'],['#7d5a3c','חום'],['#ffffff','לבן']];
@@ -748,8 +749,10 @@ function drawShape(c,a){
   c.restore();
 }
 function shapePreview(a){lctx.clearRect(0,0,W,H);drawShape(lctx,a);live.style.opacity=st.opacity*active.opacity;liveMask(true);}
+function fadeOk(b){return !!(b.layered&&!b.erase&&!b.soften);}
+function fadePx(b){return fadeOk(b)?st.fade/100*st.size*.35*(b.mul||1):0;}
 function selectBrush(b){
-  cur=b;if(!b.pick)lastDrawBrush=b;
+  cur=b;$('#fadeCtl').hidden=!fadeOk(b);if(!b.pick)lastDrawBrush=b;
   BR.forEach(x=>x.el.setAttribute('aria-pressed',x===b?'true':'false'));st.size=b.size;setSizeUI(b.size);
   if(b.pick||b.clone||b.sel)setDrawer(false);
   if(!b.sel||b.sel!=='poly')cancelPoly();
@@ -812,6 +815,8 @@ function setSizeUI(z){$('#size').value=posFromSize(z);$('#sizeOut').textContent=
 $('#size').addEventListener('input',()=>{const z=sizeFromPos(+$('#size').value);st.size=z;cur.size=z;$('#sizeOut').textContent=z;});
 const bind=(id,fn)=>{const el=$('#'+id);el.addEventListener('input',()=>{fn(+el.value);$('#'+id+'Out').textContent=el.value;});};
 bind('opac',v=>{st.opacity=v/100;});
+bind('fade',v=>{st.fade=v;});
+editNum($('#fadeOut'),0,100,()=>$('#fade').value,v=>{const e=$('#fade');e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));});
 {const dir=(id,min,max)=>{const el=$('#'+id);editNum($('#'+id+'Out'),min,max,()=>el.value,v=>{el.value=v;el.dispatchEvent(new Event('input',{bubbles:true}));});};
  dir('opac',5,100);dir('smooth',0,90);dir('tol',0,120);
  editNum($('#sizeOut'),1,SZMAX,()=>st.size,v=>{setSizeUI(v);st.size=cur.size=v;});}
@@ -924,7 +929,7 @@ function cancelStroke(){
   if(a.selTool){renderSel();return;}
   if(a.fill)return;
   if(a.shape){lctx.clearRect(0,0,W,H);liveMask(false);return;}
-  if(a.b.layered){lctx.clearRect(0,0,W,H);liveMask(false);return;}
+  if(a.b.layered){lctx.clearRect(0,0,W,H);live.style.filter='';liveMask(false);return;}
   const r=devRect(a.stroke.box);if(!r)return;
   mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalAlpha=1;mctx.globalCompositeOperation='source-over';
   mctx.clearRect(r.x,r.y,r.w,r.h);mctx.drawImage(shadow,r.x,r.y,r.w,r.h,r.x,r.y,r.w,r.h);mctx.restore();
@@ -980,7 +985,7 @@ stage.addEventListener('pointerdown',e=>{
     moveMark(x+cloneOff[0],y+cloneOff[1]);
   }
   let target=mctx;
-  if(b.layered){lctx.clearRect(0,0,W,H);live.style.opacity=b.erase?0:st.opacity*(b.alpha||1)*active.opacity;liveMask(true);target=lctx;}
+  if(b.layered){lctx.clearRect(0,0,W,H);live.style.opacity=b.erase?0:st.opacity*(b.alpha||1)*active.opacity;live.style.filter=fadePx(b)>.2?`blur(${fadePx(b)}px)`:'';liveMask(true);target=lctx;}
   act={id:e.pointerId,type:e.pointerType,b,x,y,t:e.timeStamp,v:0,sim:.55,pr:.55,stroke:new Stroke(b,target,{...st,off:cloneOff})};
   act.pr=pressure(e,act);act.stroke.add(x,y,act.pr);
 });
@@ -1039,12 +1044,14 @@ function end(e){
     mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalAlpha=st.opacity;mctx.globalCompositeOperation='source-over';mctx.drawImage(live,0,0);mctx.restore();
     lctx.clearRect(0,0,W,H);liveMask(false);commitPatch(bx);return;
   }
-  const box=a.stroke.finish(a.x,a.y,a.pr);
+  let box=a.stroke.finish(a.x,a.y,a.pr);
+  const fp=fadePx(a.b);if(fp>.2&&box){const m=fp*3;box=[clamp(box[0]-m,0,W),clamp(box[1]-m,0,H),clamp(box[2]+m,0,W),clamp(box[3]+m,0,H)];}
   if(a.b.erase){eraseSync(a.stroke.takeBox());lctx.clearRect(0,0,W,H);liveMask(false);commitPatch(box);return;}
   if(a.b.layered){
     mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalAlpha=st.opacity*(a.b.alpha||1);mctx.globalCompositeOperation=a.b.cb||'source-over';
     if(a.b.soften)softenLive(box,a.stroke.s.size*(a.b.mul||1));
-    mctx.drawImage(live,0,0);mctx.restore();lctx.clearRect(0,0,W,H);liveMask(false);
+    if(fp>.2)mctx.filter=`blur(${fp*DPR}px)`;
+    mctx.drawImage(live,0,0);mctx.restore();lctx.clearRect(0,0,W,H);live.style.filter='';liveMask(false);
   }
   commitPatch(box);
 }
@@ -1093,7 +1100,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='30';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='31';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
