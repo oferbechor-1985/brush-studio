@@ -176,6 +176,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 .shnote{font-size:11px;color:var(--muted)}
 #shbar{flex-direction:column}
 .btn[aria-pressed=true].shb{background:var(--accent);color:var(--on-accent,#fff)}
+.bring{position:fixed;z-index:8;pointer-events:none;border-radius:50%;border:1.5px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.75),inset 0 0 0 1.5px rgba(0,0,0,.75);transform:translate(-50%,-50%)}
 .mm{position:fixed;z-index:9;left:10px;top:64px;border:1px solid var(--line);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.4);touch-action:none;background:#fff;cursor:pointer}
 .mm[hidden]{display:none}
 .sbar{flex-wrap:wrap;justify-content:center;border-radius:18px;padding:6px 10px}
@@ -244,6 +245,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
   </div>
   <div class="pill" id="pill" hidden><span id="pillTxt"></span><button class="btn" id="pillBtn" hidden>מקור חדש</button></div>
   <div class="loupe" id="loupe" hidden></div>
+  <div class="bring" id="bring" hidden></div>
   <canvas class="mm" id="mm" hidden aria-label="מפת ניווט"></canvas>
   <div class="pill sbar" id="shbar" hidden role="group" aria-label="צורות">
     <div class="shtypes" id="shtypes"></div>
@@ -786,10 +788,18 @@ function pvIcon(c,b,w,h){
     c.strokeStyle=g;c.lineWidth=14;c.beginPath();c.moveTo(14,h/2);c.lineTo(w-14,h/2);c.stroke();
   }
 }
+function previewBg(){
+  const lum=h=>{const [r,g,b]=hex2rgb(h);return (.2126*r+.7152*g+.0722*b)/255;};
+  let pc='#ffffff';try{pc=getComputedStyle(app).getPropertyValue('--paper-cur').trim();}catch(_){}
+  if(pc[0]!=='#')return '';
+  const a=lum(st.color),b=lum(pc);
+  return Math.abs(a-b)<.4?(b>.5?'#2b2f36':'#e9ecef'):'';
+}
 function renderPreviews(){
+  const pbg=previewBg();
   const w=100,h=40,pts=path(t=>[8+t*84,20+Math.sin(t*TAU)*9],40,t=>.35+.65*Math.sin(Math.PI*t));
   for(const b of BR){
-    const cv=b.el.querySelector('canvas');cv.width=w*DPR;cv.height=h*DPR;
+    const cv=b.el.querySelector('canvas');cv.width=w*DPR;cv.height=h*DPR;cv.style.background=pbg;
     const c=cv.getContext('2d');c.setTransform(DPR,0,0,DPR,0,0);
     if(b.noPv){pvIcon(c,b,w,h);continue;}
     if(b.erase){c.strokeStyle=getComputedStyle(app).getPropertyValue('--muted').trim()||'#888';c.lineWidth=2;c.beginPath();c.arc(w/2,h/2,11,0,TAU);c.stroke();continue;}
@@ -923,6 +933,18 @@ function startGesture(){
   const [a,b]=[...touches.values()],r=srect(),mx=(a.x+b.x)/2-r.left,my=(a.y+b.y)/2-r.top,[px,py]=toPageS(mx,my);
   gest={d0:Math.hypot(a.x-b.x,a.y-b.y)||1,z0:vz,a0:va,f0:Math.atan2(b.y-a.y,b.x-a.x)/RAD,px,py};
 }
+/* brush outline: follows the pen while drawing/hovering, and shows at the centre while the size changes */
+const bring=$('#bring');let ringT=0;
+function ringOn(){return !hand&&!cur.sel&&!cur.pick&&!cur.fill&&!cur.shape;}
+function showRing(x,y,hold){
+  const d=Math.max(6,st.size*vz);bring.style.width=bring.style.height=d+'px';bring.style.left=x+'px';bring.style.top=y+'px';bring.hidden=false;
+  clearTimeout(ringT);if(!hold)ringT=setTimeout(()=>{bring.hidden=true;},1400);
+}
+stage.addEventListener('pointermove',e=>{if(ringOn()&&!act)showRing(e.clientX,e.clientY,e.pointerType!=='touch'||false);else if(ringOn()&&act&&act.id===e.pointerId)showRing(e.clientX,e.clientY,true);},{passive:true});
+stage.addEventListener('pointerup',e=>{if(e.pointerType==='touch'){clearTimeout(ringT);ringT=setTimeout(()=>{bring.hidden=true;},350);}});
+stage.addEventListener('pointerleave',()=>{bring.hidden=true;});
+$('#size').addEventListener('input',()=>showRing(stage.clientWidth/2,stage.clientHeight/2,false));
+stage.addEventListener('pointerdown',e=>{if(ringOn())showRing(e.clientX,e.clientY,true);else bring.hidden=true;});
 stage.addEventListener('pointerdown',e=>{
   if(e.pointerType==='mouse'&&e.button!==0)return;
   lastInput=e.pointerType;
@@ -1071,7 +1093,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='29';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='30';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
