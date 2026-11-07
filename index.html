@@ -749,6 +749,14 @@ function drawShape(c,a){
   c.restore();
 }
 function shapePreview(a){lctx.clearRect(0,0,W,H);drawShape(lctx,a);live.style.opacity=st.opacity*active.opacity;liveMask(true);}
+/* blur that keeps the colour right up to the page edge: the edge pixels are repeated outward before blurring */
+function blurInto(ctx,src,sg){
+  const w=src.width,h=src.height,M=Math.ceil(sg*3),t=document.createElement('canvas');t.width=w+2*M;t.height=h+2*M;const c=t.getContext('2d');
+  c.drawImage(src,M,M);
+  c.drawImage(src,0,0,1,h,0,M,M,h);c.drawImage(src,w-1,0,1,h,M+w,M,M,h);c.drawImage(src,0,0,w,1,M,0,w,M);c.drawImage(src,0,h-1,w,1,M,M+h,w,M);
+  c.drawImage(src,0,0,1,1,0,0,M,M);c.drawImage(src,w-1,0,1,1,M+w,0,M,M);c.drawImage(src,0,h-1,1,1,0,M+h,M,M);c.drawImage(src,w-1,h-1,1,1,M+w,M+h,M,M);
+  ctx.filter=`blur(${sg}px)`;ctx.drawImage(t,-M,-M);ctx.filter='none';
+}
 function fadeOk(b){return !!(b.layered&&!b.erase&&!b.soften);}
 function fadePx(b){return fadeOk(b)?st.fade/100*st.size*.35*(b.mul||1):0;}
 function selectBrush(b){
@@ -1050,8 +1058,8 @@ function end(e){
   if(a.b.layered){
     mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalAlpha=st.opacity*(a.b.alpha||1);mctx.globalCompositeOperation=a.b.cb||'source-over';
     if(a.b.soften)softenLive(box,a.stroke.s.size*(a.b.mul||1));
-    if(fp>.2)mctx.filter=`blur(${fp*DPR}px)`;
-    mctx.drawImage(live,0,0);mctx.restore();lctx.clearRect(0,0,W,H);live.style.filter='';liveMask(false);
+    if(fp>.2)blurInto(mctx,live,fp*DPR);else mctx.drawImage(live,0,0);
+    mctx.restore();lctx.clearRect(0,0,W,H);live.style.filter='';liveMask(false);
   }
   commitPatch(box);
 }
@@ -1100,7 +1108,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='31';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='32';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
