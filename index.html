@@ -176,7 +176,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 .shnote{font-size:11px;color:var(--muted)}
 #shbar{flex-direction:column}
 .btn[aria-pressed=true].shb{background:var(--accent);color:var(--on-accent,#fff)}
-.bring{position:fixed;z-index:8;pointer-events:none;border-radius:50%;border:1.5px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.75),inset 0 0 0 1.5px rgba(0,0,0,.75);transform:translate(-50%,-50%)}
+.bring{position:fixed;z-index:50;pointer-events:none;border-radius:50%;border:1.5px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.75),inset 0 0 0 1.5px rgba(0,0,0,.75);transform:translate(-50%,-50%)}
 .mm{position:fixed;z-index:9;left:10px;top:64px;border:1px solid var(--line);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.4);touch-action:none;background:#fff;cursor:pointer}
 .mm[hidden]{display:none}
 .sbar{flex-wrap:wrap;justify-content:center;border-radius:18px;padding:6px 10px}
@@ -1108,7 +1108,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='32';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='33';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
