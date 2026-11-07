@@ -617,7 +617,7 @@ class Stroke{
     const c=this.c,cv=c.canvas,s=this.s;
     if(this.lx===undefined){this.lx=x;this.ly=y;this.dd=0;}
     this.dd+=Math.hypot(x-this.lx,y-this.ly);this.lx=x;this.ly=y;
-    const ang=(s.advDir<0?-1:1)*(s.step||60)*this.dd/100,rd=Math.max(.5,s.size*.5*DPR),cx=x*DPR,cy=y*DPR;
+    const ang=(s.advDir<0?-1:1)*(s.step||60)*(this.dd+s.size)/100,rd=Math.max(.5,s.size*.5*DPR),cx=x*DPR,cy=y*DPR;
     const x0=Math.max(0,Math.floor(cx-rd)),y0=Math.max(0,Math.floor(cy-rd)),x1=Math.min(cv.width,Math.ceil(cx+rd)),y1=Math.min(cv.height,Math.ceil(cy+rd)),w=x1-x0,h=y1-y0;
     if(w>0&&h>0){
       if(!this.aw)this.aw=new Uint8Array(cv.width*cv.height);
@@ -791,8 +791,8 @@ function blurInto(ctx,src,sg){
   c.drawImage(src,0,0,1,1,0,0,M,M);c.drawImage(src,w-1,0,1,1,M+w,0,M,M);c.drawImage(src,0,h-1,1,1,0,M+h,M,M);c.drawImage(src,w-1,h-1,1,1,M+w,M+h,M,M);
   ctx.filter=`blur(${sg}px)`;ctx.drawImage(t,-M,-M);ctx.filter='none';
 }
-function fadeOk(b){return !!(b.layered&&!b.erase&&!b.soften);}
-function fadePx(b){return fadeOk(b)?st.fade/100*st.size*.35*(b.mul||1):0;}
+function fadeOk(b){return !!((b.layered&&!b.erase&&!b.soften)||b.adv);}
+function fadePx(b){return fadeOk(b)&&b.layered?st.fade/100*st.size*.35*(b.mul||1):0;}
 function selectBrush(b){
   cur=b;$('#fadeCtl').hidden=!fadeOk(b);$('#advCtl').hidden=!(b.adv||b.adv2);if(!b.pick)lastDrawBrush=b;
   BR.forEach(x=>x.el.setAttribute('aria-pressed',x===b?'true':'false'));st.size=b.size;setSizeUI(b.size);
@@ -1144,7 +1144,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='36';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='37';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
