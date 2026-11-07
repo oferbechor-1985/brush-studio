@@ -792,7 +792,7 @@ $('#palm').addEventListener('change',e=>{st.palm=e.target.checked;});
 
 /* ---------- options drawer ---------- */
 const drawer=$('#drawer'),menu=$('#menu');let drawerOpen=false;
-function setDrawer(o){drawerOpen=o;drawer.classList.toggle('open',o);menu.setAttribute('aria-expanded',o?'true':'false');drawer.inert=!o;updateCloneUI();}
+function setDrawer(o){if(o&&typeof warmProj==='function')warmProj();drawerOpen=o;drawer.classList.toggle('open',o);menu.setAttribute('aria-expanded',o?'true':'false');drawer.inert=!o;updateCloneUI();}
 menu.addEventListener('click',()=>{setPanel(false);setLayersPanel(false);setDrawer(!drawerOpen);});
 $('#dclose').addEventListener('click',()=>setDrawer(false));
 addEventListener('keydown',e=>{if(e.key==='Escape'){setDrawer(false);exitFrame();}});
@@ -813,7 +813,8 @@ function commitPatch(box){
   pushHist({x,y,before,after,layer:active});
 }
 let dirty=false;try{dirty=localStorage.getItem('dirty')==='1';}catch(_){}
-function setDirty(v){dirty=v;try{localStorage.setItem('dirty',v?'1':'0');}catch(_){}}
+let projCache=null,projWarm=0;
+function setDirty(v){if(v)projCache=null;dirty=v;try{localStorage.setItem('dirty',v?'1':'0');}catch(_){}}
 function pushHist(e){setDirty(true);hist.length=hi;hist.push(e);if(hist.length>60)hist.shift();hi=hist.length;syncBtns();scheduleSave();}
 function undo(){if(hi<=0)return;exitFrame();const e=hist[--hi];if(e.resize)unResize(e);else if(e.layerOp)layerUndo(e);else if(layers.includes(e.layer)){if(e.layer!==active)setActive(e.layer);mctx.putImageData(e.before,e.x,e.y);sctx.putImageData(e.before,e.x,e.y);}syncBtns();scheduleSave();}
 function redo(){if(hi>=hist.length)return;exitFrame();const e=hist[hi++];if(e.resize)doResize(e.l,e.t,e.r,e.b,false);else if(e.layerOp)layerRedo(e);else if(layers.includes(e.layer)){if(e.layer!==active)setActive(e.layer);mctx.putImageData(e.after,e.x,e.y);sctx.putImageData(e.after,e.x,e.y);}syncBtns();scheduleSave();}
@@ -1051,7 +1052,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='25';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='26';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1572,16 +1573,19 @@ async function saveProject(){
   }catch(_){hint.textContent='שמירת קובץ העבודה לא הצליחה.';hint.hidden=false;return false;}
 }
 $('#projSave').addEventListener('click',saveProject);
+/* the share sheet needs a fresh tap, so the file is prepared in advance when the menu opens */
+function warmProj(){if(projCache||projWarm)return;projWarm=setTimeout(async()=>{projWarm=0;try{projCache=await buildProject();}catch(_){}},400);}
 $('#projShare').addEventListener('click',async()=>{
-  const say=t=>{setDrawer(false);hint.textContent=t;hint.hidden=false;setTimeout(hideHint,5000);};
+  const say=t=>{setDrawer(false);hint.textContent=t;hint.hidden=false;setTimeout(hideHint,6000);};
   try{
-    const blob=await buildProject(),name=stamp()+'.obpaint';
-    // Android only shares known file types, so the file travels as plain text (the content is unchanged)
-    const f=new File([blob],name,{type:'text/plain'});
+    const blob=projCache||await buildProject();projCache=blob;
+    const name=stamp()+'.obpaint',f=new File([blob],name,{type:'text/plain'});
     await navigator.share({files:[f],title:name});setDirty(false);setDrawer(false);
   }catch(err){
     if(err&&err.name==='AbortError')return;
-    say('השיתוף לא נתמך כאן. השתמשו ב"שמור עבודה" והעבירו את הקובץ לתיקייה ידנית.');
+    const n=err&&err.name||'?';
+    if(n==='NotAllowedError'&&projCache){say('הקובץ מוכן. לחצו שוב על "שתף עבודה".');return;}
+    say('השיתוף נכשל ('+n+'). השתמשו ב"שמור עבודה" והעבירו את הקובץ ידנית.');
   }
 });
 $('#projOpen').addEventListener('click',()=>$('#projIn').click());
