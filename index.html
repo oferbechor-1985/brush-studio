@@ -1051,7 +1051,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='24';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='25';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1572,13 +1572,17 @@ async function saveProject(){
   }catch(_){hint.textContent='שמירת קובץ העבודה לא הצליחה.';hint.hidden=false;return false;}
 }
 $('#projSave').addEventListener('click',saveProject);
-if(!navigator.share)$('#projShare').hidden=true;
 $('#projShare').addEventListener('click',async()=>{
+  const say=t=>{setDrawer(false);hint.textContent=t;hint.hidden=false;setTimeout(hideHint,5000);};
   try{
-    const blob=await buildProject(),f=new File([blob],stamp()+'.obpaint',{type:'application/octet-stream'});
-    if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'קובץ עבודה'});setDirty(false);setDrawer(false);}
-    else{hint.textContent='השיתוף לא זמין כאן. אפשר לשמור עבודה ולהעביר ידנית.';hint.hidden=false;}
-  }catch(err){if(err&&err.name!=='AbortError'){hint.textContent='השיתוף לא הצליח.';hint.hidden=false;}}
+    const blob=await buildProject(),name=stamp()+'.obpaint';
+    // Android only shares known file types, so the file travels as plain text (the content is unchanged)
+    const f=new File([blob],name,{type:'text/plain'});
+    await navigator.share({files:[f],title:name});setDirty(false);setDrawer(false);
+  }catch(err){
+    if(err&&err.name==='AbortError')return;
+    say('השיתוף לא נתמך כאן. השתמשו ב"שמור עבודה" והעבירו את הקובץ לתיקייה ידנית.');
+  }
 });
 $('#projOpen').addEventListener('click',()=>$('#projIn').click());
 $('#projIn').addEventListener('change',async e=>{
