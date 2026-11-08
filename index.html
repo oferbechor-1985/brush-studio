@@ -1161,7 +1161,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='39';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='40';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1734,7 +1734,7 @@ async function openProjectText(text){
 }
 
 /* ---------- shared folder (Cloudflare worker + KV, access code) ---------- */
-const GALLERY_URL='';
+const GALLERY_URL='https://obpaint-gallery.ofer-bechor.workers.dev';
 const galSec=$('#galSec');galSec.hidden=!GALLERY_URL;
 const gal=$('#gal'),galList=$('#galList'),galMsg=$('#galMsg');
 const lsG=k=>{try{return localStorage.getItem(k)||'';}catch(_){return '';}},lsS=(k,v)=>{try{localStorage.setItem(k,v);}catch(_){}};
