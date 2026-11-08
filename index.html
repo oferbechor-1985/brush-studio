@@ -361,6 +361,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
       <p><strong>תיקייה משותפת</strong></p>
       <input id="galCode" type="password" placeholder="קוד גישה" autocomplete="off" class="galin">
       <input id="galBy" type="text" placeholder="השם שלי (יוצג ליד העבודות)" maxlength="30" autocomplete="off" class="galin">
+      <input id="galAdm" type="password" placeholder="קוד מנהל (רק למנהל, לא חובה)" autocomplete="off" class="galin">
       <div class="row"><button class="btn" id="galUp">העלה את העבודה הנוכחית</button><button class="btn" id="galClose">סגור</button></div>
       <p id="galMsg" class="shnote"></p>
       <div id="galList"></div>
@@ -1160,7 +1161,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='38';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='39';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1738,7 +1739,7 @@ const galSec=$('#galSec');galSec.hidden=!GALLERY_URL;
 const gal=$('#gal'),galList=$('#galList'),galMsg=$('#galMsg');
 const lsG=k=>{try{return localStorage.getItem(k)||'';}catch(_){return '';}},lsS=(k,v)=>{try{localStorage.setItem(k,v);}catch(_){}};
 let devId=lsG('devId');if(!devId){devId=(crypto.randomUUID?crypto.randomUUID():String(Math.random()).slice(2)+Date.now()).replace(/[^A-Za-z0-9]/g,'').slice(0,32);lsS('devId',devId);}
-const gHead=(extra)=>({'X-Code':lsG('galCode'),'X-Device':devId,...(extra||{})});
+const gHead=(extra)=>({'X-Code':lsG('galCode'),'X-Device':devId,...(lsG('galAdm')?{'X-Admin':lsG('galAdm')}:{}),...(extra||{})});
 const fmtSize=n=>n>1e6?(n/1e6).toFixed(1)+' MB':Math.max(1,Math.round(n/1e3))+' KB';
 const fmtDate=iso=>{const d=new Date(iso);return isNaN(d)?'':d.toLocaleDateString('he-IL')+' '+d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});};
 function galSay(t){galMsg.textContent=t;}
@@ -1751,7 +1752,7 @@ async function galCall(path,opt){
 async function galRefresh(){
   galList.textContent='';if(!lsG('galCode')){galSay('הקלידו את קוד הגישה.');return;}
   galSay('טוען...');const r=await galCall('/list',{headers:gHead()});if(!r)return;
-  const j=await r.json();galSay(j.files.length?'':'התיקייה ריקה.');
+  const j=await r.json();galSay(j.files.length?(j.admin?'מצב מנהל: אפשר למחוק כל עבודה.':''):'התיקייה ריקה.');
   for(const f of j.files){
     const row=document.createElement('div');row.className='galrow';
     const info=document.createElement('div');info.className='galinfo';
@@ -1759,14 +1760,15 @@ async function galRefresh(){
     const open=document.createElement('button');open.type='button';open.className='btn';open.textContent='פתח';
     open.addEventListener('click',async()=>{if(!confirm('לפתוח את "'+f.name+'"? הציור הנוכחי יוחלף.'))return;galSay('מוריד...');const r=await galCall('/file/'+f.id,{headers:gHead()});if(!r)return;const t=await r.text();if(!await openProjectText(t))galSay('הקובץ לא תקין.');});
     row.append(info,open);
-    if(f.mine){const del=document.createElement('button');del.type='button';del.className='btn';del.textContent='מחק';
+    if(f.mine||j.admin){const del=document.createElement('button');del.type='button';del.className='btn';del.textContent='מחק';
       del.addEventListener('click',async()=>{if(!confirm('למחוק את "'+f.name+'" מהתיקייה המשותפת? אי אפשר לשחזר.'))return;const r=await galCall('/file/'+f.id,{method:'DELETE',headers:gHead()});if(r)galRefresh();});row.append(del);}
     galList.appendChild(row);
   }
 }
-$('#galOpen').addEventListener('click',()=>{setDrawer(false);$('#galCode').value=lsG('galCode');$('#galBy').value=lsG('galBy');gal.hidden=false;galRefresh();});
+$('#galOpen').addEventListener('click',()=>{setDrawer(false);$('#galCode').value=lsG('galCode');$('#galBy').value=lsG('galBy');$('#galAdm').value=lsG('galAdm');gal.hidden=false;galRefresh();});
 $('#galClose').addEventListener('click',()=>{gal.hidden=true;});
 $('#galCode').addEventListener('change',e=>{lsS('galCode',e.target.value.trim());galRefresh();});
+$('#galAdm').addEventListener('change',e=>{lsS('galAdm',e.target.value.trim());galRefresh();});
 $('#galBy').addEventListener('change',e=>{lsS('galBy',e.target.value.trim().slice(0,30));});
 $('#galUp').addEventListener('click',async()=>{
   if(!lsG('galCode')){galSay('הקלידו קודם את קוד הגישה.');return;}

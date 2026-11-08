@@ -46,7 +46,7 @@ export default {
         cursor = r.list_complete ? null : r.cursor;
       } while (cursor);
       out.sort((a, b) => (a.at < b.at ? 1 : -1));
-      return reply({ files: out }, 200, cors);
+      return reply({ files: out, admin }, 200, cors);
     }
 
     if (req.method === 'POST' && url.pathname === '/file') {
