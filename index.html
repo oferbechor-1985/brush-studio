@@ -799,7 +799,7 @@ function drawShape(c,a){
   if(shp.stroke||line){c.strokeStyle=shp.sc||st.color;c.stroke();}
   c.restore();
 }
-function shapePreview(a){lctx.clearRect(0,0,W,H);drawShape(lctx,a);live.style.opacity=st.opacity*active.opacity;liveMask(true);}
+function shapePreview(a){lctx.clearRect(0,0,W,H);drawShape(lctx,a);live.style.opacity=st.opacity*active.opacity;live.style.filter=fadePx(cur)>.2?`blur(${fadePx(cur)}px)`:'';liveMask(true);}
 /* blur that keeps the colour right up to the page edge: the edge pixels are repeated outward before blurring */
 function blurInto(ctx,src,sg){
   const w=src.width,h=src.height,M=Math.ceil(sg*3),t=document.createElement('canvas');t.width=w+2*M;t.height=h+2*M;const c=t.getContext('2d');
@@ -808,8 +808,8 @@ function blurInto(ctx,src,sg){
   c.drawImage(src,0,0,1,1,0,0,M,M);c.drawImage(src,w-1,0,1,1,M+w,0,M,M);c.drawImage(src,0,h-1,1,1,0,M+h,M,M);c.drawImage(src,w-1,h-1,1,1,M+w,M+h,M,M);
   ctx.filter=`blur(${sg}px)`;ctx.drawImage(t,-M,-M);ctx.filter='none';
 }
-function fadeOk(b){return !!((b.layered&&!b.erase&&!b.soften)||b.adv);}
-function fadePx(b){return fadeOk(b)&&b.layered?st.fade/100*st.size*.35*(b.mul||1):0;}
+function fadeOk(b){return !!((b.layered&&!b.erase&&!b.soften)||b.adv||b.shape);}
+function fadePx(b){return fadeOk(b)&&(b.layered||b.shape)?st.fade/100*st.size*.35*(b.mul||1):0;}
 function selectBrush(b){
   cur=b;$('#fadeCtl').hidden=!fadeOk(b);$('#advCtl').hidden=!(b.adv||b.adv2);if(!b.pick)lastDrawBrush=b;
   BR.forEach(x=>x.el.setAttribute('aria-pressed',x===b?'true':'false'));st.size=b.size;setSizeUI(b.size);
@@ -989,7 +989,7 @@ function cancelStroke(){
   if(a.pick){loupe.hidden=true;return;}
   if(a.selTool){renderSel();return;}
   if(a.fill)return;
-  if(a.shape){lctx.clearRect(0,0,W,H);liveMask(false);return;}
+  if(a.shape){lctx.clearRect(0,0,W,H);live.style.filter='';liveMask(false);return;}
   if(a.b.layered){lctx.clearRect(0,0,W,H);live.style.filter='';liveMask(false);return;}
   const r=devRect(a.stroke.box);if(!r)return;
   mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalAlpha=1;mctx.globalCompositeOperation='source-over';
@@ -1100,10 +1100,10 @@ function end(e){
   if(a.selTool){endSelTool(a,e);return;}
   if(a.fill){if(e.type==='pointerup'&&!a.moved)doFill(a.x,a.y);return;}
   if(a.shape){
-    if(e.type!=='pointerup'||!a.moved){lctx.clearRect(0,0,W,H);liveMask(false);return;}
-    const m=st.size/2+6,bx=[clamp(Math.min(a.x0,a.x)-m-20,0,W),clamp(Math.min(a.y0,a.y)-m-20,0,H),clamp(Math.max(a.x0,a.x)+m+20,0,W),clamp(Math.max(a.y0,a.y)+m+20,0,H)];
-    mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalAlpha=st.opacity;mctx.globalCompositeOperation='source-over';mctx.drawImage(live,0,0);mctx.restore();
-    lctx.clearRect(0,0,W,H);liveMask(false);commitPatch(bx);return;
+    if(e.type!=='pointerup'||!a.moved){lctx.clearRect(0,0,W,H);live.style.filter='';liveMask(false);return;}
+    const fp=fadePx(cur),m=st.size/2+6+fp*3,bx=[clamp(Math.min(a.x0,a.x)-m-20,0,W),clamp(Math.min(a.y0,a.y)-m-20,0,H),clamp(Math.max(a.x0,a.x)+m+20,0,W),clamp(Math.max(a.y0,a.y)+m+20,0,H)];
+    mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalAlpha=st.opacity;mctx.globalCompositeOperation='source-over';if(fp>.2)blurInto(mctx,live,fp*DPR);else mctx.drawImage(live,0,0);mctx.restore();
+    lctx.clearRect(0,0,W,H);live.style.filter='';liveMask(false);commitPatch(bx);return;
   }
   let box=a.stroke.finish(a.x,a.y,a.pr);
   const fp=fadePx(a.b);if(fp>.2&&box){const m=fp*3;box=[clamp(box[0]-m,0,W),clamp(box[1]-m,0,H),clamp(box[2]+m,0,W),clamp(box[3]+m,0,H)];}
@@ -1161,7 +1161,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='40';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='42';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1601,6 +1601,7 @@ function scheduleSave(){mmMark();if(restoring)return;clearTimeout(saveT);saveT=s
 async function saveNow(){
   if(restoring||!W)return;clearTimeout(saveT);saveT=0;
   const ls=[];for(const L of layers){const blob=await new Promise(res=>L.cv.toBlob(res,'image/png'));if(!blob)return;ls.push({blob,name:L.name,visible:L.visible,locked:L.locked,opacity:L.opacity});}
+  saveViewOnly();
   await idbSet('doc',{v:2,layers:ls,active:layers.indexOf(active),w:W,h:H,dpr:DPR,paper:app.dataset.paper,fixed:pageFixed,view:{vx,vy,vz,va},color:st.color,brush:lastDrawBrush.id,size:st.size});
 }
 let viewT=0;
@@ -1635,7 +1636,9 @@ function mmGo(e){const r=mm.getBoundingClientRect(),px=clamp((e.clientX-r.left)/
 mm.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();mmDrag=true;mm.setPointerCapture(e.pointerId);mmGo(e);});
 mm.addEventListener('pointermove',e=>{if(mmDrag)mmGo(e);});
 mm.addEventListener('pointerup',()=>{mmDrag=false;});mm.addEventListener('pointercancel',()=>{mmDrag=false;});
-function viewChanged(){mmDraw();if(restoring)return;clearTimeout(viewT);viewT=setTimeout(scheduleSave,1500);}
+function viewChanged(){mmDraw();if(restoring)return;clearTimeout(viewT);viewT=setTimeout(saveViewOnly,1500);}
+/* moving or zooming the view only saves the view itself; re-encoding every layer after each pan made the screen stall */
+function saveViewOnly(){if(restoring||!W)return;try{localStorage.setItem('obview',JSON.stringify({vx,vy,vz,va,w:W,h:H}));}catch(_){}}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveNow().catch(()=>{});});
 addEventListener('pagehide',()=>{saveNow().catch(()=>{});});
 async function restore(){
@@ -1657,7 +1660,8 @@ async function loadDoc(d,replace){
       });
       setActive(layers[clamp(d.active|0,0,layers.length-1)]);
       pageFixed=!!d.fixed;app.dataset.paper=d.paper==='dark'?'dark':'light';
-      if(d.view&&[d.view.vx,d.view.vy,d.view.vz,d.view.va].every(Number.isFinite)){vx=d.view.vx;vy=d.view.vy;vz=d.view.vz;va=d.view.va;}
+      let vw=d.view;if(!replace){try{const o=JSON.parse(localStorage.getItem('obview')||'null');if(o&&o.w===d.w&&o.h===d.h)vw=o;}catch(_){}}
+      if(vw&&[vw.vx,vw.vy,vw.vz,vw.va].every(Number.isFinite)){vx=vw.vx;vy=vw.vy;vz=vw.vz;va=vw.va;}
       applyView();
       const b=BR.find(x=>x.id===d.brush);if(b&&!b.pick)selectBrush(b);
       if(Number.isFinite(d.size)&&d.size>=1&&d.size<=SZMAX){st.size=cur.size=d.size;setSizeUI(d.size);}
