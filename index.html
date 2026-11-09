@@ -147,6 +147,8 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 #cmark::after{width:calc(2px*var(--iz,1));height:calc(14px*var(--iz,1))}
 .pill{position:fixed;z-index:11;bottom:calc(14px + env(safe-area-inset-bottom, 0px));inset-inline:0;margin-inline:auto;width:max-content;max-width:calc(100% - 32px);background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 16px;display:flex;align-items:center;gap:10px;font-size:13px;box-shadow:0 6px 28px rgba(0,0,0,.4)}
 .loupe{position:fixed;z-index:15;width:64px;height:64px;border-radius:50%;border:4px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.5),0 4px 14px rgba(0,0,0,.5);pointer-events:none;transform:translate(-50%,-100%)}
+#stage.moving #world,#stage.moving #wf{box-shadow:none}
+#stage.moving #ish{visibility:hidden}
 #ish{position:absolute;inset:0;pointer-events:none;z-index:2;box-shadow:inset calc(var(--ft,28px)*.12) calc(var(--ft,28px)*.2) calc(var(--ft,28px)*1.1) rgba(45,28,6,.55),inset 0 0 calc(var(--ft,28px)*.8) rgba(45,28,6,.28)}
 #wf{position:absolute;inset:calc(var(--ft,28px)*-1);pointer-events:none;z-index:3;box-shadow:0 calc(var(--ft,28px)*.35) calc(var(--ft,28px)*1.2) rgba(0,0,0,.55)}
 #wf i{position:absolute;inset:0;display:block}
@@ -948,7 +950,7 @@ function editNum(out,min,max,get,set){
 }
 
 /* ---------- drawing input ---------- */
-let lastInput='',act=null,lastPen=0,seenReal=false,lastStat=0;
+let lastInput='',act=null,lastPen=-1e9,seenReal=false,lastStat=0;
 const PT={pen:'עט',touch:'מגע / עט קיבולי',mouse:'עכבר'};
 function pressure(ev,a){
   const m=st.pmode;
@@ -1006,7 +1008,7 @@ function showRing(x,y,hold){
   const d=Math.max(6,st.size*vz);bring.style.width=bring.style.height=d+'px';bring.style.left=x+'px';bring.style.top=y+'px';bring.hidden=false;
   clearTimeout(ringT);if(!hold)ringT=setTimeout(()=>{bring.hidden=true;},1400);
 }
-stage.addEventListener('pointermove',e=>{if(ringOn()&&!act)showRing(e.clientX,e.clientY,e.pointerType!=='touch'||false);else if(ringOn()&&act&&act.id===e.pointerId)showRing(e.clientX,e.clientY,true);},{passive:true});
+stage.addEventListener('pointermove',e=>{if(gest||touches.size>1){bring.hidden=true;return;}if(ringOn()&&!act)showRing(e.clientX,e.clientY,e.pointerType!=='touch'||false);else if(ringOn()&&act&&act.id===e.pointerId)showRing(e.clientX,e.clientY,true);},{passive:true});
 stage.addEventListener('pointerup',e=>{if(e.pointerType==='touch'){clearTimeout(ringT);ringT=setTimeout(()=>{bring.hidden=true;},350);}});
 stage.addEventListener('pointerleave',()=>{bring.hidden=true;});
 $('#size').addEventListener('input',()=>showRing(stage.clientWidth/2,stage.clientHeight/2,false));
@@ -1161,7 +1163,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='42';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='43';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1169,11 +1171,16 @@ const wrapA=a=>{a=((a%360)+360)%360;return a>180?a-360:a;};
 const rot=(x,y,a)=>{const c=Math.cos(a*RAD),s=Math.sin(a*RAD);return [x*c-y*s,x*s+y*c];};
 function toPageS(sx,sy){sx-=vx;sy-=vy;const c=Math.cos(va*RAD),s=Math.sin(va*RAD);return [(sx*c+sy*s)/vz,(-sx*s+sy*c)/vz];}
 function toPage(cx,cy){const r=srect();return toPageS(cx-r.left,cy-r.top);}
+let movT=0;
 function applyView(){
   const sw=stage.clientWidth,sh=stage.clientHeight;
   vz=clamp(vz,MINZ,MAXZ);
-  const [ox,oy]=rot(W/2*vz,H/2*vz,va),cx=vx+ox,cy=vy+oy;  // the page centre always stays on screen
-  vx+=clamp(cx,0,sw)-cx;vy+=clamp(cy,0,sh)-cy;
+  // the page can be moved until only a strip of it is left on screen, so every part of a zoomed-in page can be reached
+  const cs=[[0,0],[W,0],[W,H],[0,H]].map(([x,y])=>{const [ox,oy]=rot(x*vz,y*vz,va);return [vx+ox,vy+oy];}),xs=cs.map(c=>c[0]),ys=cs.map(c=>c[1]),mg=Math.min(80,sw*.2,sh*.2);
+  const mxX=Math.max(...xs),mnX=Math.min(...xs),mxY=Math.max(...ys),mnY=Math.min(...ys);
+  if(mxX<mg)vx+=mg-mxX;else if(mnX>sw-mg)vx-=mnX-(sw-mg);
+  if(mxY<mg)vy+=mg-mxY;else if(mnY>sh-mg)vy-=mnY-(sh-mg);
+  stage.classList.add('moving');clearTimeout(movT);movT=setTimeout(()=>stage.classList.remove('moving'),180);
   world.style.setProperty('--iz',(1/vz).toFixed(4));
   world.style.transform=`translate(${vx}px,${vy}px) rotate(${va}deg) scale(${vz})`;
   const a=Math.round(wrapA(va)*10)/10;
