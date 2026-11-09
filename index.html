@@ -1228,7 +1228,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='45';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='46';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1827,10 +1827,11 @@ async function galCall(path,opt){
     galSay(r.status===413?'הקובץ גדול מדי לתיקייה המשותפת.':r.status===403?'אין הרשאה למחוק קובץ של מכשיר אחר (נדרש קוד מנהל).':'הפעולה נכשלה ('+r.status+(why?' · '+why:'')+').');return null;}
   return r;
 }
+const galGone=new Set();
 async function galRefresh(){
   galList.textContent='';if(!lsG('galCode')){galSay('הקלידו את קוד הגישה.');return;}
-  galSay('טוען...');const r=await galCall('/list',{headers:gHead()});if(!r)return;
-  const j=await r.json();galSay(j.files.length?(j.admin?'מצב מנהל: אפשר למחוק כל עבודה.':''):'התיקייה ריקה.');
+  galSay('טוען...');const r=await galCall('/list?t='+Date.now(),{headers:gHead(),cache:'no-store'});if(!r)return;
+  const j=await r.json();j.files=j.files.filter(f=>!galGone.has(f.id));galSay(j.files.length?(j.admin?'מצב מנהל: אפשר למחוק כל עבודה.':''):'התיקייה ריקה.');
   for(const f of j.files){
     const row=document.createElement('div');row.className='galrow';
     const info=document.createElement('div');info.className='galinfo';
@@ -1839,7 +1840,8 @@ async function galRefresh(){
     open.addEventListener('click',async()=>{if(!confirm('לפתוח את "'+f.name+'"? הציור הנוכחי יוחלף.'))return;galSay('מוריד...');const r=await galCall('/file/'+f.id,{headers:gHead()});if(!r)return;const t=await r.text();if(!await openProjectText(t))galSay('הקובץ לא תקין.');});
     row.append(info,open);
     if(f.mine||j.admin){const del=document.createElement('button');del.type='button';del.className='btn';del.textContent='מחק';
-      del.addEventListener('click',async()=>{if(!confirm('למחוק את "'+f.name+'" מהתיקייה המשותפת? אי אפשר לשחזר.'))return;const r=await galCall('/file/'+f.id,{method:'DELETE',headers:gHead()});if(r)galRefresh();});row.append(del);}
+      del.addEventListener('click',async()=>{if(!confirm('למחוק את "'+f.name+'" מהתיקייה המשותפת? אי אפשר לשחזר.'))return;let r;try{r=await fetch(GALLERY_URL+'/file/'+f.id,{method:'DELETE',headers:gHead()});}catch(_){galSay('אין חיבור לשרת.');return;}
+        if(r.ok||r.status===404){galGone.add(f.id);row.remove();galSay('נמחק.');}else if(r.status===403)galSay('אין הרשאה למחוק קובץ של מכשיר אחר (נדרש קוד מנהל).');else galSay('המחיקה נכשלה ('+r.status+').');});row.append(del);}
     galList.appendChild(row);
   }
 }
