@@ -1228,7 +1228,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='44';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='45';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1823,7 +1823,8 @@ function galSay(t){galMsg.textContent=t;}
 async function galCall(path,opt){
   let r;try{r=await fetch(GALLERY_URL+path,opt);}catch(_){galSay('אין חיבור לשרת.');return null;}
   if(r.status===401){galSay('קוד הגישה שגוי.');return null;}
-  if(!r.ok){galSay(r.status===413?'הקובץ גדול מדי לתיקייה המשותפת.':'הפעולה נכשלה ('+r.status+').');return null;}
+  if(!r.ok){let why='';try{why=(await r.clone().json()).error||'';}catch(_){}
+    galSay(r.status===413?'הקובץ גדול מדי לתיקייה המשותפת.':r.status===403?'אין הרשאה למחוק קובץ של מכשיר אחר (נדרש קוד מנהל).':'הפעולה נכשלה ('+r.status+(why?' · '+why:'')+').');return null;}
   return r;
 }
 async function galRefresh(){

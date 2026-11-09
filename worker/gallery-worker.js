@@ -74,8 +74,8 @@ export default {
       return new Response(v, { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } });
     }
     if (m && req.method === 'DELETE') {
-      const r = await env.GALLERY.getWithMetadata('f:' + m[1], 'stream');
-      if (!r.value) return reply({ error: 'missing' }, 404, cors);
+      const r = await env.GALLERY.getWithMetadata('f:' + m[1]);
+      if (r.value === null && !r.metadata) return reply({ error: 'missing' }, 404, cors);
       if (!admin && !(dev && r.metadata && r.metadata.dev === dev)) return reply({ error: 'owner' }, 403, cors);
       await env.GALLERY.delete('f:' + m[1]);
       return reply({ ok: true }, 200, cors);
