@@ -53,6 +53,12 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 .colors{flex-wrap:wrap;max-width:100%}
 #color{width:44px;height:44px;padding:0;border:1px solid var(--line);border-radius:10px;background:var(--panel);cursor:pointer}
 .sw{display:flex;flex-wrap:wrap;gap:6px}
+.mycol{margin-top:10px}
+.mycolh{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.mycolh span{font-size:12px;color:var(--muted);flex:1;min-width:80px}
+.palrow{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.palrow .sw{flex:1}
+.palrow .sw button{width:20px;height:20px}
 .sw button{width:30px;height:30px;border-radius:50%;border:2px solid var(--panel);box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0}
 .sw button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--accent)}
 
@@ -281,6 +287,11 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
         <button type="button" class="btn cpbtn" id="cpBtn" aria-expanded="false" aria-controls="cp" aria-label="צבע מותאם אישית" title="צבע מותאם אישית"><span class="cpdot" id="cpDot"></span></button>
         <div class="sw" id="sw"></div>
       </div>
+      <div class="mycol" id="mycol">
+        <div class="mycolh"><span>הצבעים שלי</span><button type="button" class="btn" id="mcAdd" title="הוסף את הצבע הנוכחי">+ הוסף</button><button type="button" class="btn" id="mcSave" title="שמור את הצבעים כפלטה לשימוש עתידי">שמור פלטה</button><button type="button" class="btn" id="mcLoad" title="פלטות שמורות">פלטות שמורות</button></div>
+        <div class="sw" id="mcSw"></div>
+        <p class="shnote" id="mcNote">צבעים שמשתמשים בהם מתווספים לכאן אוטומטית, ונשמרים עם הפרויקט. לחיצה ארוכה על צבע מוחקת אותו.</p>
+      </div>
       <div class="cp" id="cp" hidden dir="ltr">
         <div class="sv" id="sv"><div class="svt" id="svt"></div></div>
         <input class="hue" id="hue" type="range" min="0" max="360" step="1" value="0" aria-label="גוון">
@@ -367,6 +378,13 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
       <div class="row"><button class="btn" id="galUp">העלה את העבודה הנוכחית</button><button class="btn" id="galClose">סגור</button></div>
       <p id="galMsg" class="shnote"></p>
       <div id="galList"></div>
+    </div>
+  </div>
+  <div class="sheet" id="pal" hidden>
+    <div class="card" role="dialog" aria-label="פלטות שמורות" style="width:min(420px,100%);max-height:86vh;overflow:auto">
+      <p><strong>פלטות שמורות</strong></p>
+      <div id="palList"></div>
+      <div class="row"><button class="btn" id="palClose">סגור</button></div>
     </div>
   </div>
   <div class="sheet" id="nm" hidden>
@@ -713,6 +731,51 @@ const st={...paint('#14181c'),step:60,advDir:1,fade:0,opacity:1,smooth:.7,size:6
 let cur=BR[0];
 st.size=cur.size;
 const COLORS=[['#14181c','שחור'],['#e5484d','אדום'],['#f76b15','כתום'],['#ffc53d','צהוב'],['#30a46c','ירוק'],['#12a594','טורקיז'],['#0090ff','כחול'],['#6e56cf','סגול'],['#e93d82','ורוד'],['#7d5a3c','חום'],['#ffffff','לבן']];
+const MAXMC=24;let myColors=[];
+const mcSw=$('#mcSw');
+function mcRender(){
+  mcSw.textContent='';
+  myColors.forEach(hex=>{const b=document.createElement('button');b.type='button';b.style.background=hex;b.setAttribute('aria-label',hex);b.dataset.hex=hex;b.setAttribute('aria-pressed',hex===st.color?'true':'false');
+    let t=0,long=false;
+    b.addEventListener('pointerdown',()=>{long=false;t=setTimeout(()=>{long=true;if(confirm('למחוק את הצבע '+hex+' מהצבעים שלי?')){myColors=myColors.filter(x=>x!==hex);mcRender();mcChanged();}},650);});
+    const stop=()=>clearTimeout(t);b.addEventListener('pointerup',stop);b.addEventListener('pointerleave',stop);b.addEventListener('pointercancel',stop);
+    b.addEventListener('click',()=>{if(!long)setColor(hex);});b.addEventListener('contextmenu',e=>e.preventDefault());
+    mcSw.appendChild(b);});
+  $('#mcNote').hidden=myColors.length>0&&false;
+}
+let mcT=0;function mcLater(hex){clearTimeout(mcT);mcT=setTimeout(()=>rememberColor(hex),900);}
+function mcChanged(){setDirty(true);scheduleSave();}
+function rememberColor(hex){
+  hex=String(hex||'').toLowerCase();if(!/^#[0-9a-f]{6}$/.test(hex))return;
+  if(COLORS.some(c=>c[0]===hex)||myColors.includes(hex))return;
+  myColors.push(hex);if(myColors.length>MAXMC)myColors.shift();mcRender();mcChanged();
+}
+function setMyColors(a){myColors=(Array.isArray(a)?a:[]).filter(h=>/^#[0-9a-f]{6}$/i.test(h)).map(h=>h.toLowerCase()).slice(0,MAXMC);mcRender();}
+$('#mcAdd').addEventListener('click',()=>{const h=st.color.toLowerCase();if(COLORS.some(c=>c[0]===h)||myColors.includes(h)){return;}rememberColor(h);});
+/* saved palettes: kept on this device for later projects */
+const palGet=()=>{try{const a=JSON.parse(localStorage.getItem('palettes')||'[]');return Array.isArray(a)?a:[];}catch(_){return [];}};
+const palPut=a=>{try{localStorage.setItem('palettes',JSON.stringify(a.slice(-30)));}catch(_){}};
+$('#mcSave').addEventListener('click',async()=>{
+  if(!myColors.length){$('#mcNote').textContent='אין עדיין צבעים לשמירה.';return;}
+  const nm=await askName('פלטה '+(palGet().length+1),'שם הפלטה');if(nm===null)return;
+  const a=palGet().filter(p=>p.name!==nm);a.push({name:nm,colors:[...myColors]});palPut(a);$('#mcNote').textContent='הפלטה "'+nm+'" נשמרה במכשיר.';
+});
+function palShow(){
+  const list=$('#palList');list.textContent='';const a=palGet();
+  if(!a.length){const p=document.createElement('p');p.className='shnote';p.textContent='אין פלטות שמורות.';list.appendChild(p);return;}
+  a.forEach((pl,i)=>{
+    const row=document.createElement('div');row.className='palrow';
+    const info=document.createElement('div');info.style.cssText='min-width:90px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';info.textContent=pl.name;
+    const sw=document.createElement('div');sw.className='sw';pl.colors.forEach(h=>{const b=document.createElement('button');b.type='button';b.tabIndex=-1;b.style.background=h;sw.appendChild(b);});
+    const ld=document.createElement('button');ld.type='button';ld.className='btn';ld.textContent='טען';
+    ld.addEventListener('click',()=>{if(myColors.length&&!confirm('הצבעים שלי בפרויקט הנוכחי יוחלפו בפלטה "'+pl.name+'". להמשיך?'))return;setMyColors(pl.colors);mcChanged();$('#pal').hidden=true;});
+    const dl=document.createElement('button');dl.type='button';dl.className='btn';dl.textContent='מחק';
+    dl.addEventListener('click',()=>{if(!confirm('למחוק את הפלטה "'+pl.name+'"?'))return;const b=palGet();b.splice(i,1);palPut(b);palShow();});
+    row.append(info,sw,ld,dl);list.appendChild(row);
+  });
+}
+$('#mcLoad').addEventListener('click',()=>{palShow();$('#pal').hidden=false;});
+$('#palClose').addEventListener('click',()=>{$('#pal').hidden=true;});
 const swEl=$('#sw');
 COLORS.forEach(([hex,name])=>{const b=document.createElement('button');b.type='button';b.style.background=hex;b.setAttribute('aria-label',name);b.dataset.hex=hex;b.setAttribute('aria-pressed',hex===st.color?'true':'false');
   b.addEventListener('click',()=>setColor(hex));swEl.appendChild(b);});
@@ -723,15 +786,16 @@ function hsl2rgb(h,s,l){const a=s*Math.min(l,1-l),f=n=>{const k=(n+h/30)%12;retu
 function hsv2hex(h,s,v){const f=n=>{const k=(n+h/60)%6;return v-v*s*Math.max(0,Math.min(k,4-k,1));};return '#'+[f(5),f(3),f(1)].map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('');}
 function syncCp(){sv.style.setProperty('--hc',`hsl(${cH},100%,50%)`);svt.style.left=(cS*100)+'%';svt.style.top=((1-cV)*100)+'%';hue.value=Math.round(cH);if(document.activeElement!==hexIn)hexIn.value=st.color;}
 function setColor(hex,fromPicker){
+  if(fromPicker)mcLater(hex);
   Object.assign(st,paint(hex));$('#dot').style.background=hex;$('#cpDot').style.background=hex;
   if(!fromPicker){const [h,s,v]=rgb2hsv(st.rgb);if(s>.001&&v>.001)cH=h;cS=s;cV=v;}
-  swEl.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.hex===hex?'true':'false'));syncCp();queuePreviews();
+  swEl.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.hex===hex?'true':'false'));mcSw.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.hex===hex?'true':'false'));syncCp();queuePreviews();
 }
 function svMove(e){const r=sv.getBoundingClientRect();cS=clamp((e.clientX-r.left)/r.width,0,1);cV=1-clamp((e.clientY-r.top)/r.height,0,1);setColor(hsv2hex(cH,cS,cV),true);}
 sv.addEventListener('pointerdown',e=>{e.preventDefault();try{sv.setPointerCapture(e.pointerId);}catch(_){}svMove(e);});
 sv.addEventListener('pointermove',e=>{if(sv.hasPointerCapture&&sv.hasPointerCapture(e.pointerId))svMove(e);});
 hue.addEventListener('input',()=>{cH=+hue.value;setColor(hsv2hex(cH,cS,cV),true);});
-hexIn.addEventListener('input',()=>{const v=hexIn.value.trim().replace(/^#?/,'#').toLowerCase();if(/^#[0-9a-f]{6}$/.test(v))setColor(v);});
+hexIn.addEventListener('input',()=>{const v=hexIn.value.trim().replace(/^#?/,'#').toLowerCase();if(/^#[0-9a-f]{6}$/.test(v)){setColor(v);mcLater(v);}});
 hexIn.addEventListener('blur',()=>{hexIn.value=st.color;});
 $('#cpBtn').addEventListener('click',()=>{const o=$('#cp').hidden;$('#cp').hidden=!o;$('#cpBtn').setAttribute('aria-expanded',o?'true':'false');});
 
@@ -767,13 +831,14 @@ function openColorPop(start,onChange){
   const svE=ov.querySelector('.sv'),tE=ov.querySelector('.svt'),hE=ov.querySelector('.hue'),xE=ov.querySelector('.hex');
   let [h,sa,v]=rgb2hsv(hex2rgb(start));
   const draw=()=>{svE.style.setProperty('--hc',`hsl(${h},100%,50%)`);tE.style.left=sa*100+'%';tE.style.top=(1-v)*100+'%';hE.value=Math.round(h);};
-  const push=()=>{const x=hsv2hex(h,sa,v);if(document.activeElement!==xE)xE.value=x;draw();onChange(x);};
+  let last=null;
+  const push=()=>{const x=hsv2hex(h,sa,v);last=x;if(document.activeElement!==xE)xE.value=x;draw();onChange(x);};
   const mv=e=>{const r=svE.getBoundingClientRect();sa=clamp((e.clientX-r.left)/r.width,0,1);v=1-clamp((e.clientY-r.top)/r.height,0,1);push();};
   svE.addEventListener('pointerdown',e=>{e.preventDefault();try{svE.setPointerCapture(e.pointerId);}catch(_){}mv(e);});
   svE.addEventListener('pointermove',e=>{if(svE.hasPointerCapture&&svE.hasPointerCapture(e.pointerId))mv(e);});
   hE.addEventListener('input',()=>{h=+hE.value;push();});
-  xE.addEventListener('input',()=>{const t=xE.value.trim().replace(/^#?/,'#').toLowerCase();if(/^#[0-9a-f]{6}$/.test(t)){[h,sa,v]=rgb2hsv(hex2rgb(t));draw();onChange(t);}});
-  const close=()=>ov.remove();ov.querySelector('button').addEventListener('click',close);ov.addEventListener('pointerdown',e=>{if(e.target===ov)close();});
+  xE.addEventListener('input',()=>{const t=xE.value.trim().replace(/^#?/,'#').toLowerCase();if(/^#[0-9a-f]{6}$/.test(t)){[h,sa,v]=rgb2hsv(hex2rgb(t));draw();last=t;onChange(t);}});
+  const close=()=>{if(last)rememberColor(last);ov.remove();};ov.querySelector('button').addEventListener('click',close);ov.addEventListener('pointerdown',e=>{if(e.target===ov)close();});
   xE.value=start;draw();
 }
 const dotOf=id=>$('#'+id+' .cpdot');
@@ -929,7 +994,7 @@ function newDrawing(){
   while(layers.length>1)removeLayer(layers[layers.length-1]);
   const L=layers[0];L.ctx.save();L.ctx.setTransform(1,0,0,1,0,0);L.ctx.clearRect(0,0,L.cv.width,L.cv.height);L.ctx.restore();
   L.name='שכבה 1';L.opacity=1;L.visible=true;L.locked=false;styleLayer(L);
-  hist.length=0;hi=0;syncBtns();if(sel)clearSel();setActive(L);setDirty(false);renderLayersUI();hideHint();mmMark();scheduleSave();
+  setMyColors([]);hist.length=0;hi=0;syncBtns();if(sel)clearSel();setActive(L);setDirty(false);renderLayersUI();hideHint();mmMark();scheduleSave();
 }
 $('#ndSave').addEventListener('click',async()=>{if(!await saveProject())return;$('#nd').hidden=true;newDrawing();});
 $('#ndGo').addEventListener('click',()=>{$('#nd').hidden=true;newDrawing();});
@@ -1163,7 +1228,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='43';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='44';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1609,7 +1674,7 @@ async function saveNow(){
   if(restoring||!W)return;clearTimeout(saveT);saveT=0;
   const ls=[];for(const L of layers){const blob=await new Promise(res=>L.cv.toBlob(res,'image/png'));if(!blob)return;ls.push({blob,name:L.name,visible:L.visible,locked:L.locked,opacity:L.opacity});}
   saveViewOnly();
-  await idbSet('doc',{v:2,layers:ls,active:layers.indexOf(active),w:W,h:H,dpr:DPR,paper:app.dataset.paper,fixed:pageFixed,view:{vx,vy,vz,va},color:st.color,brush:lastDrawBrush.id,size:st.size});
+  await idbSet('doc',{v:2,layers:ls,active:layers.indexOf(active),w:W,h:H,dpr:DPR,paper:app.dataset.paper,fixed:pageFixed,view:{vx,vy,vz,va},color:st.color,brush:lastDrawBrush.id,size:st.size,palette:[...myColors]});
 }
 let viewT=0;
 /* ---------- navigation minimap ---------- */
@@ -1666,6 +1731,7 @@ async function loadDoc(d,replace){
         if(bmps[i]){L.ctx.save();L.ctx.setTransform(1,0,0,1,0,0);L.ctx.drawImage(bmps[i],0,0,L.cv.width,L.cv.height);L.ctx.restore();if(bmps[i].close)bmps[i].close();}
       });
       setActive(layers[clamp(d.active|0,0,layers.length-1)]);
+      if(replace||d.palette)setMyColors(d.palette);
       pageFixed=!!d.fixed;app.dataset.paper=d.paper==='dark'?'dark':'light';
       let vw=d.view;if(!replace){try{const o=JSON.parse(localStorage.getItem('obview')||'null');if(o&&o.w===d.w&&o.h===d.h)vw=o;}catch(_){}}
       if(vw&&[vw.vx,vw.vy,vw.vz,vw.va].every(Number.isFinite)){vx=vw.vx;vy=vw.vy;vz=vw.vz;va=vw.va;}
@@ -1682,15 +1748,15 @@ async function loadDoc(d,replace){
 const blobToUrl=b=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(b);});
 async function buildProject(){
     const ls=[];for(const L of layers){const blob=await new Promise(res=>L.cv.toBlob(res,'image/png'));if(!blob)throw 0;ls.push({name:L.name,visible:L.visible,locked:L.locked,opacity:L.opacity,png:await blobToUrl(blob)});}
-    const doc={app:'OBPaint',v:1,w:W,h:H,fixed:pageFixed,paper:app.dataset.paper,view:{vx,vy,vz,va},color:st.color,brush:lastDrawBrush.id,size:st.size,active:layers.indexOf(active),layers:ls};
+    const doc={app:'OBPaint',v:1,w:W,h:H,fixed:pageFixed,paper:app.dataset.paper,view:{vx,vy,vz,va},color:st.color,brush:lastDrawBrush.id,size:st.size,active:layers.indexOf(active),palette:[...myColors],layers:ls};
     return new Blob([JSON.stringify(doc)],{type:'application/octet-stream'});
 }
 /* file-name prompt: suggests the default name, editable */
-function askName(){
+function askName(def,title){
   return new Promise(res=>{
-    const box=$('#nm'),inp=$('#nmIn');inp.value=stamp();box.hidden=false;setTimeout(()=>{inp.focus();inp.select();},50);
+    const box=$('#nm'),inp=$('#nmIn');$('#nm p').textContent=title||'שם הקובץ';inp.value=def||stamp();box.hidden=false;setTimeout(()=>{inp.focus();inp.select();},50);
     const done=v=>{box.hidden=true;$('#nmOk').onclick=$('#nmNo').onclick=inp.onkeydown=null;
-      if(v===null)return res(null);let n=v.replace(/\.(obpaint)?(\.txt)?$/i,'').replace(/[\\\/:*?"<>|\u0000-\u001f]/g,'').trim().slice(0,80);res(n||stamp());};
+      if(v===null)return res(null);let n=v.replace(/\.(obpaint)?(\.txt)?$/i,'').replace(/[\\\/:*?"<>|\u0000-\u001f]/g,'').trim().slice(0,80);res(n||def||stamp());};
     $('#nmOk').onclick=()=>done(inp.value);$('#nmNo').onclick=()=>done(null);inp.onkeydown=e=>{if(e.key==='Enter')done(inp.value);else if(e.key==='Escape')done(null);};
   });
 }
@@ -1739,7 +1805,7 @@ async function openProjectText(text){
     if(!confirm('לפתוח את קובץ העבודה? הציור הנוכחי יוחלף.'))return;
     const layersIn=[];for(const q of j.layers){if(typeof q.png!=='string'||!q.png.startsWith('data:image/png'))throw 0;layersIn.push({blob:await (await fetch(q.png)).blob(),name:q.name,visible:q.visible,locked:q.locked,opacity:q.opacity});}
     restoring=true;
-    await loadDoc({layers:layersIn,w:j.w,h:j.h,fixed:j.fixed,paper:j.paper,view:j.view,color:j.color,brush:j.brush,size:j.size,active:j.active},true);
+    await loadDoc({layers:layersIn,w:j.w,h:j.h,fixed:j.fixed,paper:j.paper,view:j.view,color:j.color,brush:j.brush,size:j.size,active:j.active,palette:Array.isArray(j.palette)?j.palette:[]},true);
     restoring=false;fitView();mmMark();scheduleSave();setDrawer(false);$('#gal').hidden=true;return true;
   }catch(_){restoring=false;hint.textContent='לא הצלחתי לפתוח את הקובץ.';hint.hidden=false;return false;}
 }
