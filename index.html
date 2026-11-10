@@ -342,7 +342,9 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
         <button class="btn" id="projShare" title="שיתוף קובץ העבודה, למשל שמירה בתיקייה">שתף עבודה</button>
         <div id="galSec" hidden><button class="btn" id="galOpen">תיקייה משותפת</button></div>
         <button class="btn" id="projOpen" title="פתיחת קובץ עבודה">פתח עבודה</button>
+        <button class="btn" id="projImp" title="הוספת השכבות של קובץ עבודה לפרויקט הנוכחי">ייבא עבודה לפרויקט</button>
         <input type="file" id="projIn" hidden>
+        <input type="file" id="projInImp" hidden>
         <input type="file" id="imgIn" accept="image/*" hidden>
       </div>
     </section>
@@ -1229,7 +1231,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='47';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='48';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1291,12 +1293,14 @@ function moveTo(L,to){layers.splice(layers.indexOf(L),1);layers.splice(to,0,L);r
 function mergeDown(upper,lower){const c=lower.ctx;c.save();c.setTransform(1,0,0,1,0,0);c.globalAlpha=upper.visible?upper.opacity:0;c.drawImage(upper.cv,0,0);c.restore();}
 function layerUndo(e){
   if(e.op==='add')removeLayer(e.L);
+  else if(e.op==='addmany')[...e.Ls].reverse().forEach(removeLayer);
   else if(e.op==='del')insertLayer(e.L,e.idx);
   else if(e.op==='move')moveTo(e.L,e.from);
   else if(e.op==='merge'){const c=e.lower.ctx;c.save();c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;c.globalCompositeOperation='copy';c.drawImage(e.before,0,0);c.restore();insertLayer(e.upper,e.idx);}
 }
 function layerRedo(e){
   if(e.op==='add')insertLayer(e.L,e.idx);
+  else if(e.op==='addmany')e.Ls.forEach((L,i)=>insertLayer(L,e.idx+i));
   else if(e.op==='del')removeLayer(e.L);
   else if(e.op==='move')moveTo(e.L,e.to);
   else if(e.op==='merge'){mergeDown(e.upper,e.lower);removeLayer(e.upper);}
@@ -1805,6 +1809,34 @@ $('#projIn').addEventListener('change',async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
   openProjectText(await f.text());
 });
+$('#projImp').addEventListener('click',()=>$('#projInImp').click());
+$('#projInImp').addEventListener('change',async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  await importProjectText(await f.text());
+});
+/* adds the layers of an OBPaint file on top of the current project (centred, original size) */
+async function importProjectText(text){
+  const say=t=>{hint.textContent=t;hint.hidden=false;setTimeout(()=>{if(hint.textContent===t)hint.hidden=true;},4000);};
+  try{
+    const j=JSON.parse(text);
+    if(j.app!=='OBPaint'||!Array.isArray(j.layers)||!j.layers.length||!(j.w>0&&j.h>0)||j.layers.length>MAXL)throw 0;
+    if(layers.length+j.layers.length>MAXL){say('אי אפשר לייבא: בפרויקט '+layers.length+' שכבות ובקובץ '+j.layers.length+', והמקסימום '+MAXL+'.');return false;}
+    if((layers.length+j.layers.length)*main.width*main.height>MAXLPX){say('הדף גדול מדי בשביל עוד שכבות.');return false;}
+    if(!confirm('להוסיף '+j.layers.length+' שכבות מהקובץ לפרויקט הנוכחי?'))return false;
+    const bm=[];for(const q of j.layers){if(typeof q.png!=='string'||!q.png.startsWith('data:image/png'))throw 0;bm.push(await createImageBitmap(await (await fetch(q.png)).blob()));}
+    const Ls=[],idx=layers.length,dx=Math.round((W-j.w)/2*DPR),dy=Math.round((H-j.h)/2*DPR);
+    j.layers.forEach((q,i)=>{
+      const L=newLayer();sizeLayer(L,main.width,main.height,W,H);
+      L.ctx.save();L.ctx.setTransform(1,0,0,1,0,0);L.ctx.drawImage(bm[i],dx,dy,Math.round(j.w*DPR),Math.round(j.h*DPR));L.ctx.restore();if(bm[i].close)bm[i].close();
+      if(q.name)L.name=String(q.name).slice(0,24);L.visible=q.visible!==false;L.opacity=Number.isFinite(q.opacity)?clamp(q.opacity,0,1):1;L.locked=false;
+      layers.splice(layers.length,0,L);styleLayer(L);Ls.push(L);
+    });
+    setActive(Ls[Ls.length-1]);
+    pushHist({layerOp:true,op:'addmany',Ls,idx});
+    if(Array.isArray(j.palette))j.palette.forEach(rememberColor);
+    renderLayersUI();mmMark();setDrawer(false);say('נוספו '+Ls.length+' שכבות.');return true;
+  }catch(_){say('לא הצלחתי לייבא את הקובץ.');return false;}
+}
 async function openProjectText(text){
   try{
     const j=JSON.parse(text);
