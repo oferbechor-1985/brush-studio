@@ -102,7 +102,15 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
   display:flex;flex-direction:column;gap:22px;transform:translateX(105%);visibility:hidden;transition:transform .22s ease,visibility 0s .22s}
 .drawer.open{transform:none;visibility:visible;transition:transform .22s ease}
 .dhead{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.drawer section{min-width:0}
+.drawer section,.drawer details{min-width:0}
+.dsec>summary,.dsub>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:36px;user-select:none}
+.dsec>summary{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 0 6px}
+.dsub>summary{font:500 13px/1 var(--f-ui);color:var(--fg);margin:8px 0 6px}
+.dsec>summary::-webkit-details-marker,.dsub>summary::-webkit-details-marker{display:none}
+.dsec>summary::after,.dsub>summary::after{content:'';width:8px;height:8px;border-inline-end:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .15s;margin-inline-end:4px}
+.dsec[open]>summary::after,.dsub[open]>summary::after{transform:rotate(-135deg)}
+.dsub{border-top:1px solid var(--line);margin-top:6px}
+.dsec:not([open])>summary,.dsub:not([open])>summary{margin-bottom:0}
 .stack{display:flex;flex-direction:column;gap:2px}
 .actions{display:flex;flex-wrap:wrap;gap:8px}
 #world{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform;background:var(--paper-cur);box-shadow:0 0 0 1px rgba(255,255,255,.14),0 8px 32px rgba(0,0,0,.5)}
@@ -303,8 +311,11 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
       <h1 dir="ltr">OBPaint</h1>
       <button class="btn" id="dclose" aria-label="סגור אפשרויות"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
-    <section><h2>מברשות</h2><nav class="brushes" id="brushes" aria-label="מברשות"></nav></section>
-    <section><h2>צבע</h2>
+    <details class="dsec" data-k="brushes" open><summary>מברשות</summary>
+      <details class="dsub" data-k="draw" open><summary>ציור</summary><nav class="brushes" id="brushes" aria-label="מברשות ציור"></nav></details>
+      <details class="dsub" data-k="fx" open><summary>אפקטים וכלים</summary><nav class="brushes" id="brushesFx" aria-label="אפקטים וכלים"></nav></details>
+    </details>
+    <details class="dsec" data-k="s1" open><summary>צבע</summary>
       <div class="grp colors" role="group" aria-label="צבע">
         <button type="button" class="btn cpbtn" id="cpBtn" aria-expanded="false" aria-controls="cp" aria-label="צבע מותאם אישית" title="צבע מותאם אישית"><span class="cpdot" id="cpDot"></span></button>
         <div class="sw" id="sw"></div>
@@ -319,8 +330,8 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
         <input class="hue" id="hue" type="range" min="0" max="360" step="1" value="0" aria-label="גוון">
         <input class="hex" id="hex" maxlength="7" spellcheck="false" autocomplete="off" aria-label="קוד צבע" value="#14181c">
       </div>
-    </section>
-    <section><h2>קו</h2>
+    </details>
+    <details class="dsec" data-k="s2" open><summary>קו</summary>
       <div class="stack">
         <label class="ctl" for="size"><span>גודל</span><input id="size" type="range" min="0" max="1000" value="95" aria-valuetext="6"><output id="sizeOut">6</output></label>
         <label class="ctl" for="fade" id="fadeCtl" hidden><span>רכות קצה</span><input id="fade" type="range" min="0" max="100" value="0"><output id="fadeOut">0</output></label>
@@ -332,8 +343,8 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
         <label class="ctl" for="smooth"><span>החלקה</span><input id="smooth" type="range" min="0" max="90" value="30"><output id="smoothOut">30</output></label>
         <label class="ctl" for="tol"><span>סבירות צבע</span><input id="tol" type="range" min="0" max="120" value="32"><output id="tolOut">32</output></label>
       </div>
-    </section>
-    <section><h2>עט ומגע</h2>
+    </details>
+    <details class="dsec" data-k="s3" open><summary>עט ומגע</summary>
       <div class="stack">
         <label class="ctl" for="pmode"><span>לחץ</span>
           <select id="pmode">
@@ -346,11 +357,11 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
         <label class="chk" for="palm"><input type="checkbox" id="palm" checked> דחיית כף יד</label>
       </div>
       <div class="stat" id="stat" aria-live="off">ממתין לעט או לאצבע</div>
-    </section>
-    <section id="fbSec" hidden><h2>משוב</h2>
+    </details>
+    <details class="dsec" data-k="fb" id="fbSec" hidden open><summary>משוב</summary>
       <div class="actions"><button class="btn" id="fbOpen">משוב ורעיונות</button></div>
-    </section>
-    <section><h2>דף</h2>
+    </details>
+    <details class="dsec" data-k="s4" open><summary>דף</summary>
       <div class="actions" role="group" aria-label="דף">
         <button class="btn" id="paper" title="רקע בהיר / כהה"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor"/></svg>רקע</button>
         <button class="btn" id="clear" title="דף חלק"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg><span id="clearTxt">נקה</span></button>
@@ -368,7 +379,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
         <input type="file" id="projInImp" hidden>
         <input type="file" id="imgIn" accept="image/*" hidden>
       </div>
-    </section>
+    </details>
     <p class="ver" id="ver"></p>
   </aside>
 
@@ -824,10 +835,15 @@ hexIn.addEventListener('input',()=>{const v=hexIn.value.trim().replace(/^#?/,'#'
 hexIn.addEventListener('blur',()=>{hexIn.value=st.color;});
 $('#cpBtn').addEventListener('click',()=>{const o=$('#cp').hidden;$('#cp').hidden=!o;$('#cpBtn').setAttribute('aria-expanded',o?'true':'false');});
 
-const brEl=$('#brushes');
+const brEl=$('#brushes'),brFx=$('#brushesFx');
+const FXIDS=new Set(['smudge','blur','sharpen','burn','dodge','advance','clone','pick','selrect','sellasso','selpoly','selcolor']);
 BR.forEach(b=>{const el=document.createElement('button');el.type='button';el.className='brush';el.dataset.id=b.id;el.setAttribute('aria-pressed',b===cur?'true':'false');
   el.innerHTML='<canvas class="pv"></canvas><span></span>';el.querySelector('span').textContent=b.name;
-  el.addEventListener('click',()=>selectBrush(b));brEl.appendChild(el);b.el=el;});
+  el.addEventListener('click',()=>selectBrush(b));(FXIDS.has(b.id)?brFx:brEl).appendChild(el);b.el=el;});
+document.querySelectorAll('.dsec,.dsub').forEach(d=>{
+  const k='dsec-'+d.dataset.k;try{const v=localStorage.getItem(k);if(v==='0')d.open=false;}catch(_){}
+  d.addEventListener('toggle',()=>{try{localStorage.setItem(k,d.open?'1':'0');}catch(_){}});
+});
 let sel=null,selUrl='',selMode='new',polyPts=[];const sbar=$('#sbar'),sTxt=$('#sTxt');
 let framing=null,lastDrawBrush=BR[0],cloneSrc=null,cloneOff=null,cloneArm=false;
 const pill=$('#pill'),pillTxt=$('#pillTxt'),pillBtn=$('#pillBtn'),cmark=$('#cmark'),loupe=$('#loupe');
@@ -1256,7 +1272,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='50';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='51';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
