@@ -192,6 +192,12 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 .bring{position:fixed;z-index:50;pointer-events:none;border-radius:50%;border:1.5px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.75),inset 0 0 0 1.5px rgba(0,0,0,.75);transform:translate(-50%,-50%)}
 .mm{position:fixed;z-index:9;left:10px;top:64px;border:1px solid var(--line);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.4);touch-action:none;background:#fff;cursor:pointer}
 .mm[hidden]{display:none}
+.tfp{width:min(560px,calc(100% - 24px));border-radius:18px;padding:8px 12px;display:flex;flex-direction:column;gap:6px}
+.tfg{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:2px 14px}
+.tfg label{display:grid;grid-template-columns:78px minmax(0,1fr) 46px;align-items:center;gap:6px;font-size:12px}
+.tfg output{font:500 11px var(--f-mono);text-align:end}
+.tfb{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end}
+.tfb .btn{min-height:38px;padding:0 10px}
 .sbar{flex-wrap:wrap;justify-content:center;border-radius:18px;padding:6px 10px}
 #selv{pointer-events:none;z-index:1}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
@@ -273,8 +279,23 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
     <span id="sTxt"></span>
     <button class="btn" id="sMode" title="איך בחירה חדשה משתלבת עם הקיימת">חדש</button>
     <button class="btn" id="sPoly" hidden>סיום</button>
+    <button class="btn" id="sAll" title="סימון כל הדף">בחר הכול</button>
+    <button class="btn" id="sTr" title="הגדלה, הקטנה, סיבוב והטיה של האזור המסומן">שנה גודל וסיבוב</button>
     <button class="btn" id="sInv">הפוך</button>
     <button class="btn" id="sClr">בטל בחירה</button>
+  </div>
+
+  <div class="pill tfp" id="tfp" hidden role="group" aria-label="שינוי גודל וסיבוב של הבחירה">
+    <div class="tfg">
+      <label>גודל<input type="range" id="tfSc" min="10" max="400" value="100"><output id="tfScOut">100%</output></label>
+      <label>סיבוב<input type="range" id="tfRot" min="-180" max="180" value="0"><output id="tfRotOut">0°</output></label>
+      <label>רוחב<input type="range" id="tfSx" min="10" max="300" value="100"><output id="tfSxOut">100%</output></label>
+      <label>גובה<input type="range" id="tfSy" min="10" max="300" value="100"><output id="tfSyOut">100%</output></label>
+      <label>הטיה אופקית<input type="range" id="tfRy" min="-70" max="70" value="0"><output id="tfRyOut">0°</output></label>
+      <label>הטיה אנכית<input type="range" id="tfRx" min="-70" max="70" value="0"><output id="tfRxOut">0°</output></label>
+    </div>
+    <div class="tfb"><span class="shnote" style="margin:0">גררו על הציור כדי להזיז.</span>
+      <button class="btn" id="tfFh">הפוך ↔</button><button class="btn" id="tfFv">הפוך ↕</button><button class="btn" id="tfReset">איפוס</button><button class="btn" id="tfNo">בטל</button><button class="btn" id="tfOk">החל</button></div>
   </div>
 
   <aside class="drawer" id="drawer" aria-label="אפשרויות ציור">
@@ -438,6 +459,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 (()=>{
 'use strict';
 const $=s=>document.querySelector(s);
+let tfOn=false,tfLayer=null;
 const R=Math.random, TAU=Math.PI*2;
 const DPR=Math.min(2,window.devicePixelRatio||1);
 const PALM=44; // css px; contacts wider than this are treated as a palm
@@ -715,7 +737,7 @@ function newLayer(cv){cv=cv||document.createElement('canvas');return {id:++layer
 function sizeLayer(L,pw,ph,nw,nh){L.cv.width=pw;L.cv.height=ph;L.cv.style.width=nw+'px';L.cv.style.height=nh+'px';L.ctx.setTransform(DPR,0,0,DPR,0,0);}
 function styleLayer(L){L.cv.style.display=L.visible?'':'none';L.cv.style.opacity=L.opacity<1?String(L.opacity):'';}
 function relayer(){const anchor=$('#ish');for(const L of layers)world.insertBefore(L.cv,anchor);world.insertBefore($('#selv'),anchor);world.insertBefore(live,active.cv.nextSibling);}
-function setActive(L){active=L;main=L.cv;mctx=L.ctx;sctx.clearRect(0,0,shadow.width,shadow.height);sctx.drawImage(L.cv,0,0);relayer();renderLayersUI();}
+function setActive(L){if(tfOn&&L!==tfLayer)tfCancel();active=L;main=L.cv;mctx=L.ctx;sctx.clearRect(0,0,shadow.width,shadow.height);sctx.drawImage(L.cv,0,0);relayer();renderLayersUI();}
 {const L0=newLayer($('#main'));layers.push(L0);active=L0;main=L0.cv;mctx=L0.ctx;}
 function copyCv(cv){const t=document.createElement('canvas');t.width=cv.width;t.height=cv.height;t.getContext('2d').drawImage(cv,0,0);return t;}
 function fit(){
@@ -981,8 +1003,8 @@ let dirty=false;try{dirty=localStorage.getItem('dirty')==='1';}catch(_){}
 let projCache=null,projWarm=0;
 function setDirty(v){if(v)projCache=null;dirty=v;try{localStorage.setItem('dirty',v?'1':'0');}catch(_){}}
 function pushHist(e){setDirty(true);hist.length=hi;hist.push(e);if(hist.length>60)hist.shift();hi=hist.length;syncBtns();scheduleSave();}
-function undo(){if(hi<=0)return;exitFrame();const e=hist[--hi];if(e.resize)unResize(e);else if(e.layerOp)layerUndo(e);else if(layers.includes(e.layer)){if(e.layer!==active)setActive(e.layer);mctx.putImageData(e.before,e.x,e.y);sctx.putImageData(e.before,e.x,e.y);}syncBtns();scheduleSave();}
-function redo(){if(hi>=hist.length)return;exitFrame();const e=hist[hi++];if(e.resize)doResize(e.l,e.t,e.r,e.b,false);else if(e.layerOp)layerRedo(e);else if(layers.includes(e.layer)){if(e.layer!==active)setActive(e.layer);mctx.putImageData(e.after,e.x,e.y);sctx.putImageData(e.after,e.x,e.y);}syncBtns();scheduleSave();}
+function undo(){if(tfOn){tfCancel();return;}if(hi<=0)return;exitFrame();const e=hist[--hi];if(e.resize)unResize(e);else if(e.layerOp)layerUndo(e);else if(layers.includes(e.layer)){if(e.layer!==active)setActive(e.layer);mctx.putImageData(e.before,e.x,e.y);sctx.putImageData(e.before,e.x,e.y);}syncBtns();scheduleSave();}
+function redo(){if(tfOn)return;if(hi>=hist.length)return;exitFrame();const e=hist[hi++];if(e.resize)doResize(e.l,e.t,e.r,e.b,false);else if(e.layerOp)layerRedo(e);else if(layers.includes(e.layer)){if(e.layer!==active)setActive(e.layer);mctx.putImageData(e.after,e.x,e.y);sctx.putImageData(e.after,e.x,e.y);}syncBtns();scheduleSave();}
 undoBtn.addEventListener('click',undo);redoBtn.addEventListener('click',redo);
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();}});
 
@@ -1096,6 +1118,7 @@ stage.addEventListener('pointerdown',e=>{
   }
   if(act||gest||pan)return;
   e.preventDefault();
+  if(tfOn){try{stage.setPointerCapture(e.pointerId);}catch(_){}const [px,py]=pos(e);act={id:e.pointerId,type:e.pointerType,tf:true,px,py};return;}
   if(hand||framing){try{stage.setPointerCapture(e.pointerId);}catch(_){}resetClear();hideHint();pan={id:e.pointerId,x:e.clientX,y:e.clientY,vx,vy};return;}
   const b=cur,[x,y]=pos(e);
   if((x<0||y<0||x>W||y>H)&&(b.fill||b.pick||b.clone)){dead.add(e.pointerId);return;} // brushes may start outside the page and draw once they enter it
@@ -1122,6 +1145,7 @@ stage.addEventListener('pointerdown',e=>{
 });
 stage.addEventListener('pointermove',e=>{
   if(touches.has(e.pointerId))touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(act&&act.tf&&e.pointerId===act.id&&!gest){const [px,py]=pos(e);tfP.tx+=(px-act.px)*DPR;tfP.ty+=(py-act.py)*DPR;act.px=px;act.py=py;tfRender();return;}
   if(gest){
     if(!touches.has(e.pointerId)||touches.size<2)return;
     const [a,b]=[...touches.values()],r=srect();
@@ -1166,6 +1190,7 @@ function end(e){
   if(!act||e.pointerId!==act.id)return;
   const a=act;act=null;
   try{stage.releasePointerCapture(e.pointerId);}catch(_){}
+  if(a.tf){tfRender(true);return;}
   if(a.pick){loupe.hidden=true;selectBrush(lastDrawBrush);return;}
   if(a.selTool){endSelTool(a,e);return;}
   if(a.fill){if(e.type==='pointerup'&&!a.moved)doFill(a.x,a.y);return;}
@@ -1231,7 +1256,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='48';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='49';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1459,13 +1484,14 @@ function endSelTool(a,e){
   }
 }
 function updateSelUI(canShow,pillShown){
+  if(tfOn){sbar.hidden=true;return;}
   const tool=cur.sel,show=canShow&&(tool||sel);
   sbar.hidden=!show;if(!show)return;
   sbar.style.bottom=pillShown?'calc(70px + env(safe-area-inset-bottom, 0px))':'';
   const hints={rect:'גררו לסימון מלבן',lasso:'גררו לסימון חופשי',poly:polyPts.length?'הקישו נקודות. סיום: הנקודה הראשונה או "סיום"':'הקישו נקודות בקווים ישרים',color:'הקישו על צבע לבחירה'};
   sTxt.textContent=sel&&!(tool&&polyPts.length)?(tool?'ציור רק בתוך הבחירה. אפשר להוסיף או להחסיר:':'ציור רק בתוך האזור המסומן'):(hints[tool]||'');
   $('#sMode').textContent={new:'חדש',add:'הוסף',sub:'החסר'}[selMode];$('#sMode').hidden=!tool;
-  $('#sPoly').hidden=!(tool==='poly'&&polyPts.length>=3);$('#sInv').hidden=!sel;$('#sClr').hidden=!(sel||polyPts.length);
+  $('#sPoly').hidden=!(tool==='poly'&&polyPts.length>=3);$('#sInv').hidden=!sel;$('#sTr').hidden=!sel;$('#sAll').hidden=false;$('#sClr').hidden=!(sel||polyPts.length);
 }
 $('#sMode').addEventListener('click',()=>{selMode=selMode==='new'?'add':selMode==='add'?'sub':'new';updateCloneUI();});
 $('#sPoly').addEventListener('click',finishPoly);
@@ -1476,6 +1502,111 @@ $('#sInv').addEventListener('click',()=>{
   sel.ctx.clearRect(0,0,t.width,t.height);sel.ctx.drawImage(t,0,0);
   if(selEmpty()){clearSel();return;}finishSel();
 });
+
+/* ---------- select all + transform (size, rotation, faux-3D tilt) of the selected pixels ---------- */
+$('#sAll').addEventListener('click',()=>{if(selMode==='sub'&&!sel)selMode='new';if(applyMask(c=>c.fillRect(0,0,W,H)))finishSel();updateCloneUI();});
+let tfP=null,tfSrc=null,tfBox=null,tfQ=0,tfRaf=0,tfOut=null;
+const mul3=(a,b)=>{const r=new Array(9);for(let i=0;i<3;i++)for(let j=0;j<3;j++)r[i*3+j]=a[i*3]*b[j]+a[i*3+1]*b[3+j]+a[i*3+2]*b[6+j];return r;};
+function inv3(m){const [a,b,c,d,e,f,g,h,i]=m,A=e*i-f*h,B=-(d*i-f*g),C=d*h-e*g,D=-(b*i-c*h),E=a*i-c*g,F=-(a*h-b*g),G=b*f-c*e,Hh=-(a*f-c*d),I=a*e-b*d,det=a*A+b*B+c*C;if(!det)return null;return [A/det,D/det,G/det,B/det,E/det,Hh/det,C/det,F/det,I/det];}
+function tfMatrix(){
+  const p=tfP,w=tfSrc.width,h=tfSrc.height,k=p.sc/100,sx=p.sx/100*k*p.fx,sy=p.sy/100*k*p.fy,f=1.5*Math.max(w,h)*k;
+  const cx=Math.cos(p.rx*RAD),sxn=Math.sin(p.rx*RAD),cy=Math.cos(p.ry*RAD),syn=Math.sin(p.ry*RAD);
+  // R = Rx * Ry ; columns 0,1 matter (source plane is z=0)
+  const r00=cy, r10=sxn*syn, r20=-cx*syn, r01=0, r11=cx, r21=sxn;
+  const M=[f*r00,f*r01,0, f*r10,f*r11,0, r20,r21,f];
+  const S=[sx,0,0, 0,sy,0, 0,0,1];
+  const cz=Math.cos(p.rot*RAD),sz=Math.sin(p.rot*RAD),Rz=[cz,-sz,0, sz,cz,0, 0,0,1];
+  const T=[1,0,tfBox.cx+p.tx, 0,1,tfBox.cy+p.ty, 0,0,1];
+  return mul3(T,mul3(Rz,mul3(M,S)));
+}
+function tfWarp(q){
+  const H=tfMatrix(),w=tfSrc.width,h=tfSrc.height,iH=inv3(H);if(!iH)return null;
+  const pr=(x,y)=>{const u=H[0]*x+H[1]*y+H[2],v=H[3]*x+H[4]*y+H[5],z=H[6]*x+H[7]*y+H[8];return [u/z,v/z];};
+  const cs=[pr(-w/2,-h/2),pr(w/2,-h/2),pr(w/2,h/2),pr(-w/2,h/2)];
+  const W2=main.width,H2=main.height;
+  let x0=Math.floor(Math.min(...cs.map(c=>c[0]))),y0=Math.floor(Math.min(...cs.map(c=>c[1]))),x1=Math.ceil(Math.max(...cs.map(c=>c[0]))),y1=Math.ceil(Math.max(...cs.map(c=>c[1])));
+  x0=Math.max(0,x0);y0=Math.max(0,y0);x1=Math.min(W2,x1);y1=Math.min(H2,y1);
+  if(x1<=x0||y1<=y0)return {x:0,y:0,w:0,h:0,data:null,q};
+  const ow=Math.ceil((x1-x0)/q),oh=Math.ceil((y1-y0)/q),out=new ImageData(ow,oh),o=out.data,s=tfSrc.data;
+  for(let j=0;j<oh;j++){const Y=y0+(j+.5)*q;
+    for(let i=0;i<ow;i++){const X=x0+(i+.5)*q;
+      const u=iH[0]*X+iH[1]*Y+iH[2],v=iH[3]*X+iH[4]*Y+iH[5],z=iH[6]*X+iH[7]*Y+iH[8];if(z<=0)continue;
+      const fx=u/z+w/2-.5,fy=v/z+h/2-.5;if(fx<-1||fy<-1||fx>w||fy>h)continue;
+      const ix=Math.floor(fx),iy=Math.floor(fy),ax=fx-ix,ay=fy-iy;
+      let A=0,Rr=0,G=0,B=0;
+      for(let n=0;n<4;n++){const xx=ix+(n&1),yy=iy+(n>>1);if(xx<0||yy<0||xx>=w||yy>=h)continue;
+        const wt=((n&1)?ax:1-ax)*((n>>1)?ay:1-ay),k=(yy*w+xx)*4,a=s[k+3]*wt;A+=a;Rr+=s[k]*a;G+=s[k+1]*a;B+=s[k+2]*a;}
+      if(A<=0)continue;const d=(j*ow+i)*4;o[d]=Rr/A;o[d+1]=G/A;o[d+2]=B/A;o[d+3]=A;}}
+  return {x:x0,y:y0,w:x1-x0,h:y1-y0,data:out,q};
+}
+const tfTmp=document.createElement('canvas');
+function tfRender(final){
+  if(!tfOn)return;
+  const go=()=>{tfRaf=0;
+    const big=(main.width*main.height)>1.2e6&&!final,q=big?2:1,r=tfWarp(q);tfOut=r;
+    lctx.save();lctx.setTransform(1,0,0,1,0,0);lctx.clearRect(0,0,live.width,live.height);
+    if(r&&r.data){tfTmp.width=r.data.width;tfTmp.height=r.data.height;tfTmp.getContext('2d').putImageData(r.data,0,0);lctx.imageSmoothingEnabled=true;lctx.drawImage(tfTmp,r.x,r.y,r.w,r.h);}
+    lctx.restore();live.style.opacity=active.opacity;live.style.filter='';liveMask(false);
+  };
+  if(final){cancelAnimationFrame(tfRaf);go();}else if(!tfRaf)tfRaf=requestAnimationFrame(go);
+}
+const TFD={tfSc:['sc','%'],tfRot:['rot','°'],tfSx:['sx','%'],tfSy:['sy','%'],tfRx:['rx','°'],tfRy:['ry','°']};
+function tfSync(){for(const id in TFD){$('#'+id).value=tfP[TFD[id][0]];$('#'+id+'Out').textContent=Math.round(tfP[TFD[id][0]])+TFD[id][1];}}
+for(const id in TFD){
+  const el=$('#'+id);el.addEventListener('input',()=>{if(!tfP)return;tfP[TFD[id][0]]=+el.value;$('#'+id+'Out').textContent=Math.round(+el.value)+TFD[id][1];tfRender();});
+  el.addEventListener('change',()=>tfRender(true));
+  editNum($('#'+id+'Out'),+el.min,+el.max,()=>el.value,v=>{el.value=v;el.dispatchEvent(new Event('input',{bubbles:true}));tfRender(true);});
+}
+const tfDef=()=>({sc:100,sx:100,sy:100,rot:0,rx:0,ry:0,tx:0,ty:0,fx:1,fy:1});
+function selBounds(){
+  const w=sel.cv.width,h=sel.cv.height,d=sel.ctx.getImageData(0,0,w,h).data;let x0=w,y0=h,x1=-1,y1=-1;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(d[(y*w+x)*4+3]){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
+  return x1<0?null:{x:x0,y:y0,w:x1-x0+1,h:y1-y0+1};
+}
+function tfStart(){
+  if(!sel||tfOn)return;
+  if(!active.visible){hint.textContent='השכבה הפעילה מוסתרת.';hint.hidden=false;return;}
+  if(active.locked){hint.textContent='השכבה הפעילה נעולה. בטלו את הנעילה בלוח השכבות.';hint.hidden=false;return;}
+  const b=selBounds();if(!b){clearSel();return;}
+  // floating copy of the selected pixels (selection alpha respected), then they are lifted off the layer
+  const c=document.createElement('canvas');c.width=b.w;c.height=b.h;const g=c.getContext('2d',{willReadFrequently:true});
+  g.drawImage(main,b.x,b.y,b.w,b.h,0,0,b.w,b.h);g.globalCompositeOperation='destination-in';g.drawImage(sel.cv,b.x,b.y,b.w,b.h,0,0,b.w,b.h);
+  tfSrc=g.getImageData(0,0,b.w,b.h);tfBox={x:b.x,y:b.y,w:b.w,h:b.h,cx:b.x+b.w/2,cy:b.y+b.h/2};
+  mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalCompositeOperation='destination-out';mctx.drawImage(sel.cv,b.x,b.y,b.w,b.h,b.x,b.y,b.w,b.h);mctx.restore();
+  tfOn=true;tfLayer=active;tfP=tfDef();tfSync();setDrawer(false);
+  selv.hidden=true;$('#tfp').hidden=false;sbar.hidden=true;tfRender(true);
+}
+function tfEnd(){
+  tfOn=false;tfLayer=null;tfP=null;tfSrc=null;tfOut=null;cancelAnimationFrame(tfRaf);tfRaf=0;
+  $('#tfp').hidden=true;lctx.save();lctx.setTransform(1,0,0,1,0,0);lctx.clearRect(0,0,live.width,live.height);lctx.restore();live.style.opacity='';
+  renderSel();updateCloneUI();
+}
+function tfCancel(){
+  if(!tfOn)return;
+  const b=tfBox;mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalCompositeOperation='copy';mctx.drawImage(shadow,b.x,b.y,b.w,b.h,b.x,b.y,b.w,b.h);mctx.restore();
+  tfEnd();
+}
+function tfApply(){
+  if(!tfOn)return;
+  const r=tfWarp(1);tfOn=false; // lets saveNow and history run again
+  const b=tfBox;let x0=b.x,y0=b.y,x1=b.x+b.w,y1=b.y+b.h;
+  if(r&&r.data){tfTmp.width=r.data.width;tfTmp.height=r.data.height;tfTmp.getContext('2d').putImageData(r.data,0,0);
+    mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalCompositeOperation='source-over';mctx.drawImage(tfTmp,r.x,r.y);mctx.restore();
+    x0=Math.min(x0,r.x);y0=Math.min(y0,r.y);x1=Math.max(x1,r.x+r.w);y1=Math.max(y1,r.y+r.h);}
+  const keep=sel;sel=null;commitPatch([x0/DPR,y0/DPR,x1/DPR,y1/DPR]);sel=keep;
+  // the selection follows the transformed pixels
+  sel.ctx.save();sel.ctx.setTransform(1,0,0,1,0,0);sel.ctx.clearRect(0,0,sel.cv.width,sel.cv.height);
+  if(r&&r.data){const m=new ImageData(r.data.width,r.data.height),md=m.data,sd=r.data.data;for(let i=0;i<sd.length;i+=4){md[i]=md[i+1]=md[i+2]=255;md[i+3]=sd[i+3];}
+    tfTmp.getContext('2d').putImageData(m,0,0);sel.ctx.drawImage(tfTmp,r.x,r.y);}
+  sel.ctx.restore();
+  tfOn=true;tfEnd();
+  if(selEmpty())clearSel();else finishSel();
+}
+$('#sTr').addEventListener('click',tfStart);
+$('#tfOk').addEventListener('click',tfApply);$('#tfNo').addEventListener('click',tfCancel);
+$('#tfReset').addEventListener('click',()=>{if(!tfP)return;tfP=tfDef();tfSync();tfRender(true);});
+$('#tfFh').addEventListener('click',()=>{if(!tfP)return;tfP.fx*=-1;tfRender(true);});
+$('#tfFv').addEventListener('click',()=>{if(!tfP)return;tfP.fy*=-1;tfRender(true);});
 
 /* ---------- paint bucket ---------- */
 function doFill(x,y){
@@ -1682,7 +1813,7 @@ async function idbSet(k,v){const db=await idb();return new Promise((res,rej)=>{c
 let saveT=0,restoring=true;
 function scheduleSave(){mmMark();if(restoring)return;clearTimeout(saveT);saveT=setTimeout(()=>saveNow().catch(()=>{}),900);}
 async function saveNow(){
-  if(restoring||!W)return;clearTimeout(saveT);saveT=0;
+  if(restoring||!W||tfOn)return;clearTimeout(saveT);saveT=0;
   const ls=[];for(const L of layers){const blob=await new Promise(res=>L.cv.toBlob(res,'image/png'));if(!blob)return;ls.push({blob,name:L.name,visible:L.visible,locked:L.locked,opacity:L.opacity});}
   saveViewOnly();
   await idbSet('doc',{v:2,layers:ls,active:layers.indexOf(active),w:W,h:H,dpr:DPR,paper:app.dataset.paper,fixed:pageFixed,view:{vx,vy,vz,va},color:st.color,brush:lastDrawBrush.id,size:st.size,palette:[...myColors]});
