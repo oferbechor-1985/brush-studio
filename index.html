@@ -107,8 +107,8 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 .dsec>summary{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 0 6px}
 .dsub>summary{font:500 13px/1 var(--f-ui);color:var(--fg);margin:8px 0 6px}
 .dsec>summary::-webkit-details-marker,.dsub>summary::-webkit-details-marker{display:none}
-.dsec>summary::after,.dsub>summary::after{content:'';width:8px;height:8px;border-inline-end:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .15s;margin-inline-end:4px}
-.dsec[open]>summary::after,.dsub[open]>summary::after{transform:rotate(-135deg)}
+.dsec>summary::after,.dsub>summary::after{content:'';width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg) translate(-2px,-2px);transition:transform .15s;margin-inline-end:4px}
+.dsec[open]>summary::after,.dsub[open]>summary::after{transform:rotate(-135deg) translate(-2px,-2px)}
 .dsub{border-top:1px solid var(--line);margin-top:6px}
 .dsec:not([open])>summary,.dsub:not([open])>summary{margin-bottom:0}
 .stack{display:flex;flex-direction:column;gap:2px}
@@ -312,7 +312,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
       <button class="btn" id="dclose" aria-label="סגור אפשרויות"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <details class="dsec" data-k="brushes" open><summary>מברשות</summary>
-      <details class="dsub" data-k="draw" open><summary>ציור</summary><nav class="brushes" id="brushes" aria-label="מברשות ציור"></nav></details>
+      <nav class="brushes" id="brushes" aria-label="מברשות"></nav>
       <details class="dsub" data-k="fx" open><summary>אפקטים וכלים</summary><nav class="brushes" id="brushesFx" aria-label="אפקטים וכלים"></nav></details>
     </details>
     <details class="dsec" data-k="s1" open><summary>צבע</summary>
@@ -375,8 +375,8 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
         <div id="galSec" hidden><button class="btn" id="galOpen">תיקייה משותפת</button></div>
         <button class="btn" id="projOpen" title="פתיחת קובץ עבודה">פתח עבודה</button>
         <button class="btn" id="projImp" title="הוספת השכבות של קובץ עבודה לפרויקט הנוכחי">ייבא עבודה לפרויקט</button>
-        <input type="file" id="projIn" hidden>
-        <input type="file" id="projInImp" hidden>
+        <input type="file" id="projIn" accept=".txt,.obpaint,text/plain,application/json" hidden>
+        <input type="file" id="projInImp" accept=".txt,.obpaint,text/plain,application/json" hidden>
         <input type="file" id="imgIn" accept="image/*" hidden>
       </div>
     </details>
@@ -404,9 +404,19 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 
   <div class="sheet" id="upd" hidden><div class="card" role="dialog" aria-label="עדכון"><p id="updMsg">יש גרסה חדשה של האפליקציה.</p><div class="row"><button class="btn" id="updGo">עדכן עכשיו</button><button class="btn" id="updLater">אחר כך</button></div></div></div>
 
+  <div class="sheet" id="imp" hidden>
+    <div class="card" role="dialog" aria-label="ייבוא עבודה" style="width:min(360px,100%)">
+      <p><strong>ייבוא עבודה לפרויקט</strong></p>
+      <div class="row" style="flex-direction:column;align-items:stretch;gap:8px">
+        <button class="btn" id="impFile">קובץ מהמכשיר</button>
+        <button class="btn" id="impGal">מהתיקייה המשותפת</button>
+        <button class="btn" id="impNo">ביטול</button>
+      </div>
+    </div>
+  </div>
   <div class="sheet" id="gal" hidden>
     <div class="card" role="dialog" aria-label="תיקייה משותפת" style="width:min(420px,100%);max-height:86vh;overflow:auto">
-      <p><strong>תיקייה משותפת</strong></p>
+      <p><strong id="galTitle">תיקייה משותפת</strong></p>
       <input id="galCode" type="password" placeholder="קוד גישה" autocomplete="off" class="galin">
       <input id="galBy" type="text" placeholder="השם שלי (יוצג ליד העבודות)" maxlength="30" autocomplete="off" class="galin">
       <input id="galAdm" type="password" placeholder="קוד מנהל (רק למנהל, לא חובה)" autocomplete="off" class="galin">
@@ -1272,7 +1282,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='51';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='52';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1956,7 +1966,11 @@ $('#projIn').addEventListener('change',async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
   openProjectText(await f.text());
 });
-$('#projImp').addEventListener('click',()=>$('#projInImp').click());
+const impBox=$('#imp');
+$('#projImp').addEventListener('click',()=>{if(!GALLERY_URL){$('#projInImp').click();return;}impBox.hidden=false;});
+$('#impFile').addEventListener('click',()=>{impBox.hidden=true;$('#projInImp').click();});
+$('#impGal').addEventListener('click',()=>{impBox.hidden=true;galImport=true;openGal();});
+$('#impNo').addEventListener('click',()=>{impBox.hidden=true;});
 $('#projInImp').addEventListener('change',async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
   await importProjectText(await f.text());
@@ -2013,7 +2027,9 @@ async function galCall(path,opt){
     galSay(r.status===413?'הקובץ גדול מדי לתיקייה המשותפת.':r.status===403?'אין הרשאה למחוק קובץ של מכשיר אחר (נדרש קוד מנהל).':'הפעולה נכשלה ('+r.status+(why?' · '+why:'')+').');return null;}
   return r;
 }
+let galImport=false;
 const galGone=new Set();
+function openGal(){setDrawer(false);$('#galCode').value=lsG('galCode');$('#galBy').value=lsG('galBy');$('#galAdm').value=lsG('galAdm');$('#galTitle').textContent=galImport?'ייבוא מהתיקייה המשותפת':'תיקייה משותפת';gal.hidden=false;galRefresh();}
 async function galRefresh(){
   galList.textContent='';if(!lsG('galCode')){galSay('הקלידו את קוד הגישה.');return;}
   galSay('טוען...');const r=await galCall('/list?t='+Date.now(),{headers:gHead(),cache:'no-store'});if(!r)return;
@@ -2022,8 +2038,10 @@ async function galRefresh(){
     const row=document.createElement('div');row.className='galrow';
     const info=document.createElement('div');info.className='galinfo';
     const nm=document.createElement('strong');nm.textContent=f.name;const sub=document.createElement('span');sub.textContent=f.by+' · '+fmtDate(f.at)+' · '+fmtSize(f.size);info.append(nm,sub);
-    const open=document.createElement('button');open.type='button';open.className='btn';open.textContent='פתח';
-    open.addEventListener('click',async()=>{if(!confirm('לפתוח את "'+f.name+'"? הציור הנוכחי יוחלף.'))return;galSay('מוריד...');const r=await galCall('/file/'+f.id,{headers:gHead()});if(!r)return;const t=await r.text();if(!await openProjectText(t))galSay('הקובץ לא תקין.');});
+    const open=document.createElement('button');open.type='button';open.className='btn';open.textContent=galImport?'ייבא':'פתח';
+    open.addEventListener('click',async()=>{if(!galImport&&!confirm('לפתוח את "'+f.name+'"? הציור הנוכחי יוחלף.'))return;galSay('מוריד...');const r=await galCall('/file/'+f.id,{headers:gHead()});if(!r)return;const t=await r.text();
+      if(galImport){if(await importProjectText(t)){gal.hidden=true;galImport=false;}else galSay('הייבוא לא הושלם.');return;}
+      if(!await openProjectText(t))galSay('הקובץ לא תקין.');});
     row.append(info,open);
     if(f.mine||j.admin){const del=document.createElement('button');del.type='button';del.className='btn';del.textContent='מחק';
       del.addEventListener('click',async()=>{if(!confirm('למחוק את "'+f.name+'" מהתיקייה המשותפת? אי אפשר לשחזר.'))return;let r;try{r=await fetch(GALLERY_URL+'/file/'+f.id,{method:'DELETE',headers:gHead()});}catch(_){galSay('אין חיבור לשרת.');return;}
@@ -2031,8 +2049,8 @@ async function galRefresh(){
     galList.appendChild(row);
   }
 }
-$('#galOpen').addEventListener('click',()=>{setDrawer(false);$('#galCode').value=lsG('galCode');$('#galBy').value=lsG('galBy');$('#galAdm').value=lsG('galAdm');gal.hidden=false;galRefresh();});
-$('#galClose').addEventListener('click',()=>{gal.hidden=true;});
+$('#galOpen').addEventListener('click',()=>{galImport=false;openGal();});
+$('#galClose').addEventListener('click',()=>{gal.hidden=true;galImport=false;});
 $('#galCode').addEventListener('change',e=>{lsS('galCode',e.target.value.trim());galRefresh();});
 $('#galAdm').addEventListener('change',e=>{lsS('galAdm',e.target.value.trim());galRefresh();});
 $('#galBy').addEventListener('change',e=>{lsS('galBy',e.target.value.trim().slice(0,30));});
