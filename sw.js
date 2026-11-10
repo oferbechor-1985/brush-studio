@@ -1,5 +1,5 @@
 // Bump VERSION on every release: the new worker installs in the background and the app offers "update now".
-const VERSION = 'v49';
+const VERSION = 'v50';
 const CACHE = 'brush-studio-' + VERSION;
 const FILES = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png'];
 
@@ -13,11 +13,15 @@ self.addEventListener('message', e => { if (e.data === 'SKIP_WAITING') self.skip
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   // Pages and the manifest: network first (fresh code whenever online), cache as the offline fallback.
-  if (e.request.mode === 'navigate' || /\/(index\.html|manifest\.webmanifest)$/.test(new URL(e.request.url).pathname)) {
+  const isNav = e.request.mode === 'navigate', isManifest = /\/manifest\.webmanifest$/.test(new URL(e.request.url).pathname);
+  if (isNav || isManifest || /\/index\.html$/.test(new URL(e.request.url).pathname)) {
+    // The page is cached only under ./index.html and the manifest only under its own URL (v49 and older stored the manifest over the page).
+    const key = isManifest ? e.request : './index.html';
     e.respondWith(fetch(e.request, { cache: 'no-cache' }).then(res => {
-      if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put('./index.html', copy)); }
+      const type = res.headers.get('content-type') || '';
+      if (res.ok && (isManifest || /text\/html/.test(type))) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(key, copy)); }
       return res;
-    }).catch(() => caches.match('./index.html')));
+    }).catch(() => caches.match(key, { ignoreSearch: true }).then(r => r || caches.match('./index.html'))));
     return;
   }
   e.respondWith(caches.match(e.request, { ignoreSearch: true }).then(hit => hit || fetch(e.request).then(res => {
