@@ -238,6 +238,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 
   <div class="vpanel lp" id="lp" hidden role="group" aria-label="שכבות">
     <div class="lhead"><strong>שכבות</strong><button class="btn" id="lClose">סגור</button></div>
+    <p class="shnote" style="margin:0 0 6px">לחיצה ארוכה על שם שכבה: שינוי שם.</p>
     <div class="llist" id="llist"></div>
     <div class="lacts">
       <button class="btn" id="lAdd">+ שכבה</button>
@@ -1228,7 +1229,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='46';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='47';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1320,7 +1321,13 @@ function renderLayersUI(){mmMark();
     lk.innerHTML=L.locked?'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>':'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7-2.6"/></svg>';
     lk.style.opacity=L.locked?'1':'.45';
     lk.addEventListener('click',()=>{L.locked=!L.locked;renderLayersUI();scheduleSave();});
-    const nm=document.createElement('button');nm.type='button';nm.className='lname';nm.textContent=(L.locked?'🔒 ':'')+L.name;nm.addEventListener('click',()=>{if(L!==active)setActive(L);});
+    const nm=document.createElement('button');nm.type='button';nm.className='lname';nm.textContent=(L.locked?'🔒 ':'')+L.name;let lt=0,llong=false;
+    const rename=async()=>{llong=true;const n=await askName(L.name,'שם השכבה');if(n===null||n===L.name)return;L.name=n.slice(0,24);renderLayersUI();setDirty(true);scheduleSave();};
+    nm.addEventListener('pointerdown',()=>{llong=false;clearTimeout(lt);lt=setTimeout(rename,550);});
+    ['pointerup','pointerleave','pointercancel'].forEach(ev=>nm.addEventListener(ev,()=>clearTimeout(lt)));
+    nm.addEventListener('contextmenu',e=>{e.preventDefault();});nm.addEventListener('dblclick',rename);
+    nm.title='לחיצה ארוכה: שינוי שם';
+    nm.addEventListener('click',()=>{if(llong){llong=false;return;}if(L!==active)setActive(L);});
     const op=document.createElement('input');op.type='range';op.className='lop';op.min=0;op.max=100;op.value=Math.round(L.opacity*100);op.setAttribute('aria-label','אטימות: '+L.name);
     const out=document.createElement('output');out.textContent=op.value+'%';
     op.addEventListener('input',()=>{L.opacity=op.value/100;styleLayer(L);out.textContent=op.value+'%';if(L===active&&act&&act.b&&act.b.layered)live.style.opacity=st.opacity*(act.b.alpha||1)*L.opacity;scheduleSave();});
