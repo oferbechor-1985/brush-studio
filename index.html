@@ -313,8 +313,8 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
     </div>
     <details class="dsec" data-k="brushes" open><summary>מברשות</summary>
       <nav class="brushes" id="brushes" aria-label="מברשות"></nav>
-      <details class="dsub" data-k="fx" open><summary>אפקטים וכלים</summary><nav class="brushes" id="brushesFx" aria-label="אפקטים וכלים"></nav></details>
     </details>
+    <details class="dsec" data-k="fx" open><summary>אפקטים וכלים</summary><nav class="brushes" id="brushesFx" aria-label="אפקטים וכלים"></nav></details>
     <details class="dsec" data-k="s1" open><summary>צבע</summary>
       <div class="grp colors" role="group" aria-label="צבע">
         <button type="button" class="btn cpbtn" id="cpBtn" aria-expanded="false" aria-controls="cp" aria-label="צבע מותאם אישית" title="צבע מותאם אישית"><span class="cpdot" id="cpDot"></span></button>
@@ -1282,7 +1282,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='52';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='53';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
