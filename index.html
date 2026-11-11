@@ -79,6 +79,11 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 .pv{width:100%;height:40px;border-radius:6px;background:var(--paper-cur);display:block}
 .brush span{text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+.bgt{}
+#bgtext{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+#bgtextIn{position:absolute;left:50%;top:50%;width:230%;height:230%;transform:translate(-50%,-50%) rotate(-24deg);display:flex;flex-direction:column;justify-content:center;gap:54px}
+#bgtextIn div{white-space:nowrap;font:700 24px/1.2 var(--f-ui);color:#7fe0d4;display:flex;gap:90px}
+#bgtextIn div:nth-child(even){transform:translateX(-380px)}
 .stage{position:fixed;inset:0;overflow:hidden;background:var(--ws);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:crosshair}
 .stage canvas{position:absolute;top:0;left:0;display:block}
 #live{pointer-events:none}
@@ -216,6 +221,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 <body>
 <div id="app" data-paper="light" dir="rtl" lang="he">
   <main class="stage" id="stage">
+    <div id="bgtext" aria-hidden="true"><div id="bgtextIn"></div></div>
     <div id="world"><canvas id="main"></canvas><canvas id="live"></canvas><canvas id="selv" hidden></canvas><div id="ish"></div><div id="wf"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i></div><div id="cmark" hidden></div>
       <div id="pframe" hidden data-mode="page"><div class="ph body" data-k="body"></div><div class="ph n" data-k="n"></div><div class="ph s" data-k="s"></div><div class="ph e" data-k="e"></div><div class="ph w" data-k="w"></div><div class="ph nw" data-k="nw"></div><div class="ph ne" data-k="ne"></div><div class="ph sw" data-k="sw"></div><div class="ph se" data-k="se"></div></div></div>
     <div class="hint" id="hint">פתחו את האפשרויות מהכפתור למעלה, ו"נקה" פותח דף חלק.</div>
@@ -858,6 +864,8 @@ const FXIDS=new Set(['smudge','blur','sharpen','burn','dodge','advance','clone',
 BR.forEach(b=>{const el=document.createElement('button');el.type='button';el.className='brush';el.dataset.id=b.id;el.setAttribute('aria-pressed',b===cur?'true':'false');
   el.innerHTML='<canvas class="pv"></canvas><span></span>';el.querySelector('span').textContent=b.name;
   el.addEventListener('click',()=>selectBrush(b));(FXIDS.has(b.id)?brFx:brEl).appendChild(el);b.el=el;});
+{const t='יש לך רעיון מגניב להוסיף לאפליקציה, נתקלת בבעיה, בא לך סתם לפרגן? יש כפתור משוב ורעיונות בדיוק בשביל זה',box=$('#bgtextIn');
+  for(let i=0;i<22;i++){const r=document.createElement('div');for(let k=0;k<5;k++){const sp=document.createElement('span');sp.textContent=t;r.appendChild(sp);}box.appendChild(r);}}
 document.querySelectorAll('.dsec,.dsub').forEach(d=>{
   const k='dsec-'+d.dataset.k;try{const v=localStorage.getItem(k);if(v==='0')d.open=false;}catch(_){}
   d.addEventListener('toggle',()=>{try{localStorage.setItem(k,d.open?'1':'0');}catch(_){}});
@@ -1294,7 +1302,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='57';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='58';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
