@@ -125,6 +125,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 .hp{position:absolute;inset-inline-start:-9999px;width:1px;height:1px;opacity:0}
 .card.wide{width:min(520px,100%)}
 .cpbtn{padding:0;width:44px}
+.cpadd{padding:0;width:44px;font-size:22px;line-height:1}
 .cpdot{width:26px;height:26px;border-radius:50%;background:#14181c;box-shadow:0 0 0 2px var(--panel),0 0 0 3px var(--line)}
 .cp{margin-top:12px;display:flex;flex-direction:column;gap:12px}
 .sv{position:relative;height:170px;border-radius:10px;touch-action:none;cursor:crosshair;border:1px solid var(--line);
@@ -317,13 +318,13 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
     <details class="dsec" data-k="fx" open><summary>אפקטים וכלים</summary><nav class="brushes" id="brushesFx" aria-label="אפקטים וכלים"></nav></details>
     <details class="dsec" data-k="s1" open><summary>צבע</summary>
       <div class="grp colors" role="group" aria-label="צבע">
-        <button type="button" class="btn cpbtn" id="cpBtn" aria-expanded="false" aria-controls="cp" aria-label="צבע מותאם אישית" title="צבע מותאם אישית"><span class="cpdot" id="cpDot"></span></button>
+        <button type="button" class="btn cpbtn" id="cpBtn" aria-expanded="false" aria-controls="cp" aria-label="צבע מותאם אישית" title="צבע מותאם אישית"><span class="cpdot" id="cpDot"></span></button><button type="button" class="btn cpadd" id="cpAdd" aria-label="הוסף את הצבע הנוכחי ל׳הצבעים שלי׳" title="הוסף ל׳הצבעים שלי׳">+</button>
         <div class="sw" id="sw"></div>
       </div>
       <div class="mycol" id="mycol">
         <div class="mycolh"><span>הצבעים שלי</span><button type="button" class="btn" id="mcAdd" title="הוסף את הצבע הנוכחי">+ הוסף</button><button type="button" class="btn" id="mcSave" title="שמור את הצבעים כפלטה לשימוש עתידי">שמור פלטה</button><button type="button" class="btn" id="mcLoad" title="פלטות שמורות">פלטות שמורות</button></div>
         <div class="sw" id="mcSw"></div>
-        <p class="shnote" id="mcNote">צבעים שמשתמשים בהם מתווספים לכאן אוטומטית, ונשמרים עם הפרויקט. לחיצה ארוכה על צבע מוחקת אותו.</p>
+        <p class="shnote" id="mcNote">לחצו + כדי להוסיף את הצבע הנוכחי. הצבעים נשמרים עם הפרויקט. לחיצה ארוכה על צבע מוחקת אותו.</p>
       </div>
       <div class="cp" id="cp" hidden dir="ltr">
         <div class="sv" id="sv"><div class="svt" id="svt"></div></div>
@@ -789,7 +790,6 @@ function mcRender(){
     mcSw.appendChild(b);});
   $('#mcNote').hidden=myColors.length>0&&false;
 }
-let mcT=0;function mcLater(hex){clearTimeout(mcT);mcT=setTimeout(()=>rememberColor(hex),900);}
 function mcChanged(){setDirty(true);scheduleSave();}
 function rememberColor(hex){
   hex=String(hex||'').toLowerCase();if(!/^#[0-9a-f]{6}$/.test(hex))return;
@@ -797,7 +797,11 @@ function rememberColor(hex){
   myColors.push(hex);if(myColors.length>MAXMC)myColors.shift();mcRender();mcChanged();
 }
 function setMyColors(a){myColors=(Array.isArray(a)?a:[]).filter(h=>/^#[0-9a-f]{6}$/i.test(h)).map(h=>h.toLowerCase()).slice(0,MAXMC);mcRender();}
-$('#mcAdd').addEventListener('click',()=>{const h=st.color.toLowerCase();if(COLORS.some(c=>c[0]===h)||myColors.includes(h)){return;}rememberColor(h);});
+const addCurrent=()=>{const h=st.color.toLowerCase(),n=$('#mcNote');
+  if(COLORS.some(c=>c[0]===h)){n.textContent='הצבע הזה כבר בין הצבעים הקבועים.';return;}
+  if(myColors.includes(h)){n.textContent='הצבע כבר ב"הצבעים שלי".';return;}
+  rememberColor(h);n.textContent='הצבע נוסף ל"הצבעים שלי".';hint.textContent='הצבע נוסף ל"הצבעים שלי"';hint.hidden=false;setTimeout(()=>{if(hint.textContent==='הצבע נוסף ל"הצבעים שלי"')hint.hidden=true;},1800);};
+$('#mcAdd').addEventListener('click',addCurrent);$('#cpAdd').addEventListener('click',addCurrent);
 /* saved palettes: kept on this device for later projects */
 const palGet=()=>{try{const a=JSON.parse(localStorage.getItem('palettes')||'[]');return Array.isArray(a)?a:[];}catch(_){return [];}};
 const palPut=a=>{try{localStorage.setItem('palettes',JSON.stringify(a.slice(-30)));}catch(_){}};
@@ -832,7 +836,6 @@ function hsl2rgb(h,s,l){const a=s*Math.min(l,1-l),f=n=>{const k=(n+h/30)%12;retu
 function hsv2hex(h,s,v){const f=n=>{const k=(n+h/60)%6;return v-v*s*Math.max(0,Math.min(k,4-k,1));};return '#'+[f(5),f(3),f(1)].map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('');}
 function syncCp(){sv.style.setProperty('--hc',`hsl(${cH},100%,50%)`);svt.style.left=(cS*100)+'%';svt.style.top=((1-cV)*100)+'%';hue.value=Math.round(cH);if(document.activeElement!==hexIn)hexIn.value=st.color;}
 function setColor(hex,fromPicker){
-  if(fromPicker)mcLater(hex);
   Object.assign(st,paint(hex));$('#dot').style.background=hex;$('#cpDot').style.background=hex;
   if(!fromPicker){const [h,s,v]=rgb2hsv(st.rgb);if(s>.001&&v>.001)cH=h;cS=s;cV=v;}
   swEl.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.hex===hex?'true':'false'));mcSw.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.hex===hex?'true':'false'));syncCp();queuePreviews();
@@ -841,7 +844,7 @@ function svMove(e){const r=sv.getBoundingClientRect();cS=clamp((e.clientX-r.left
 sv.addEventListener('pointerdown',e=>{e.preventDefault();try{sv.setPointerCapture(e.pointerId);}catch(_){}svMove(e);});
 sv.addEventListener('pointermove',e=>{if(sv.hasPointerCapture&&sv.hasPointerCapture(e.pointerId))svMove(e);});
 hue.addEventListener('input',()=>{cH=+hue.value;setColor(hsv2hex(cH,cS,cV),true);});
-hexIn.addEventListener('input',()=>{const v=hexIn.value.trim().replace(/^#?/,'#').toLowerCase();if(/^#[0-9a-f]{6}$/.test(v)){setColor(v);mcLater(v);}});
+hexIn.addEventListener('input',()=>{const v=hexIn.value.trim().replace(/^#?/,'#').toLowerCase();if(/^#[0-9a-f]{6}$/.test(v)){setColor(v);}});
 hexIn.addEventListener('blur',()=>{hexIn.value=st.color;});
 $('#cpBtn').addEventListener('click',()=>{const o=$('#cp').hidden;$('#cp').hidden=!o;$('#cpBtn').setAttribute('aria-expanded',o?'true':'false');});
 
@@ -889,7 +892,7 @@ function openColorPop(start,onChange){
   svE.addEventListener('pointermove',e=>{if(svE.hasPointerCapture&&svE.hasPointerCapture(e.pointerId))mv(e);});
   hE.addEventListener('input',()=>{h=+hE.value;push();});
   xE.addEventListener('input',()=>{const t=xE.value.trim().replace(/^#?/,'#').toLowerCase();if(/^#[0-9a-f]{6}$/.test(t)){[h,sa,v]=rgb2hsv(hex2rgb(t));draw();last=t;onChange(t);}});
-  const close=()=>{if(last)rememberColor(last);ov.remove();};ov.querySelector('button').addEventListener('click',close);ov.addEventListener('pointerdown',e=>{if(e.target===ov)close();});
+  const close=()=>{ov.remove();};ov.querySelector('button').addEventListener('click',close);ov.addEventListener('pointerdown',e=>{if(e.target===ov)close();});
   xE.value=start;draw();
 }
 const dotOf=id=>$('#'+id+' .cpdot');
@@ -1282,7 +1285,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='53';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='54';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
