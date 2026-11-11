@@ -289,7 +289,11 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
     <button class="btn" id="sMode" title="איך בחירה חדשה משתלבת עם הקיימת">חדש</button>
     <button class="btn" id="sPoly" hidden>סיום</button>
     <button class="btn" id="sAll" title="סימון כל הדף">בחר הכול</button>
-    <button class="btn" id="sTr" title="הגדלה, הקטנה, סיבוב והטיה של האזור המסומן">שנה גודל וסיבוב</button>
+    <button class="btn" id="sCut" title="גזירה: מעתיק את האזור המסומן ומוחק אותו מהשכבה">גזור</button>
+    <button class="btn" id="sCopy" title="העתקה של האזור המסומן">העתק</button>
+    <button class="btn" id="sPaste" title="הדבקה באותה שכבה, באותו מקום">הדבק</button>
+    <button class="btn" id="sPasteNew" title="הדבקה בשכבה חדשה, באותו מקום">הדבק בשכבה חדשה</button>
+    <button class="btn" id="sTr" title="הזזה, הגדלה, הקטנה, סיבוב והטיה של האזור המסומן">הזז / שנה גודל</button>
     <button class="btn" id="sInv">הפוך</button>
     <button class="btn" id="sClr">בטל בחירה</button>
   </div>
@@ -1285,7 +1289,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='54';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='55';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1520,7 +1524,7 @@ function updateSelUI(canShow,pillShown){
   const hints={rect:'גררו לסימון מלבן',lasso:'גררו לסימון חופשי',poly:polyPts.length?'הקישו נקודות. סיום: הנקודה הראשונה או "סיום"':'הקישו נקודות בקווים ישרים',color:'הקישו על צבע לבחירה'};
   sTxt.textContent=sel&&!(tool&&polyPts.length)?(tool?'ציור רק בתוך הבחירה. אפשר להוסיף או להחסיר:':'ציור רק בתוך האזור המסומן'):(hints[tool]||'');
   $('#sMode').textContent={new:'חדש',add:'הוסף',sub:'החסר'}[selMode];$('#sMode').hidden=!tool;
-  $('#sPoly').hidden=!(tool==='poly'&&polyPts.length>=3);$('#sInv').hidden=!sel;$('#sTr').hidden=!sel;$('#sAll').hidden=false;$('#sClr').hidden=!(sel||polyPts.length);
+  $('#sPoly').hidden=!(tool==='poly'&&polyPts.length>=3);$('#sInv').hidden=!sel;$('#sTr').hidden=!sel;$('#sCut').hidden=!sel;$('#sCopy').hidden=!sel;$('#sPaste').hidden=!clip;$('#sPasteNew').hidden=!clip;$('#sAll').hidden=false;$('#sClr').hidden=!(sel||polyPts.length);
 }
 $('#sMode').addEventListener('click',()=>{selMode=selMode==='new'?'add':selMode==='add'?'sub':'new';updateCloneUI();});
 $('#sPoly').addEventListener('click',finishPoly);
@@ -1534,6 +1538,37 @@ $('#sInv').addEventListener('click',()=>{
 
 /* ---------- select all + transform (size, rotation, faux-3D tilt) of the selected pixels ---------- */
 $('#sAll').addEventListener('click',()=>{if(selMode==='sub'&&!sel)selMode='new';if(applyMask(c=>c.fillRect(0,0,W,H)))finishSel();updateCloneUI();});
+/* ---------- cut / copy / paste of the selection (same position) ---------- */
+let clip=null;
+function selSay(t){hint.textContent=t;hint.hidden=false;setTimeout(()=>{if(hint.textContent===t)hint.hidden=true;},2200);}
+function copySel(){
+  if(!sel)return null;const b=selBounds();if(!b){selSay('אין מה להעתיק.');return null;}
+  const c=document.createElement('canvas');c.width=b.w;c.height=b.h;const g=c.getContext('2d');
+  g.drawImage(main,b.x,b.y,b.w,b.h,0,0,b.w,b.h);g.globalCompositeOperation='destination-in';g.drawImage(sel.cv,b.x,b.y,b.w,b.h,0,0,b.w,b.h);
+  clip={cv:c,x:b.x,y:b.y};updateCloneUI();return b;
+}
+function editable(){if(!active.visible){selSay('השכבה הפעילה מוסתרת.');return false;}if(active.locked){selSay('השכבה הפעילה נעולה.');return false;}return true;}
+$('#sCopy').addEventListener('click',()=>{if(copySel())selSay('הועתק. אפשר להדביק.');});
+$('#sCut').addEventListener('click',()=>{
+  if(!editable())return;const b=copySel();if(!b)return;
+  mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalCompositeOperation='destination-out';mctx.drawImage(sel.cv,b.x,b.y,b.w,b.h,b.x,b.y,b.w,b.h);mctx.restore();
+  const keep=sel;sel=null;commitPatch([b.x/DPR,b.y/DPR,(b.x+b.w)/DPR,(b.y+b.h)/DPR]);sel=keep;
+  selSay('נגזר. אפשר להדביק.');
+});
+function pasteClip(newLayer){
+  if(!clip)return;
+  if(newLayer){if(!canAdd())return;const L=newLayer_();}
+  else if(!editable())return;
+  mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalCompositeOperation='source-over';mctx.drawImage(clip.cv,clip.x,clip.y);mctx.restore();
+  const keepSel=sel;sel=null;commitPatch([clip.x/DPR,clip.y/DPR,(clip.x+clip.cv.width)/DPR,(clip.y+clip.cv.height)/DPR]);
+  // the pasted pixels become the selection, ready to move
+  ensureSel();const c=sel.ctx;c.save();c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,sel.cv.width,sel.cv.height);
+  const m=document.createElement('canvas');m.width=clip.cv.width;m.height=clip.cv.height;const g=m.getContext('2d');g.drawImage(clip.cv,0,0);g.globalCompositeOperation='source-in';g.fillStyle='#fff';g.fillRect(0,0,m.width,m.height);
+  c.drawImage(m,clip.x,clip.y);c.restore();finishSel();
+  selSay(newLayer?'הודבק בשכבה חדשה. אפשר להזיז ב"הזז / שנה גודל".':'הודבק. אפשר להזיז ב"הזז / שנה גודל".');
+}
+function newLayer_(){const L=newLayer();sizeLayer(L,main.width,main.height,W,H);const idx=layers.indexOf(active)+1;insertLayer(L,idx);pushHist({layerOp:true,op:'add',L,idx});return L;}
+$('#sPaste').addEventListener('click',()=>pasteClip(false));$('#sPasteNew').addEventListener('click',()=>pasteClip(true));
 let tfP=null,tfSrc=null,tfBox=null,tfQ=0,tfRaf=0,tfOut=null;
 const mul3=(a,b)=>{const r=new Array(9);for(let i=0;i<3;i++)for(let j=0;j<3;j++)r[i*3+j]=a[i*3]*b[j]+a[i*3+1]*b[3+j]+a[i*3+2]*b[6+j];return r;};
 function inv3(m){const [a,b,c,d,e,f,g,h,i]=m,A=e*i-f*h,B=-(d*i-f*g),C=d*h-e*g,D=-(b*i-c*h),E=a*i-c*g,F=-(a*h-b*g),G=b*f-c*e,Hh=-(a*f-c*d),I=a*e-b*d,det=a*A+b*B+c*C;if(!det)return null;return [A/det,D/det,G/det,B/det,E/det,Hh/det,C/det,F/det,I/det];}
