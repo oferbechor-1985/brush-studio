@@ -369,6 +369,9 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
       </div>
       <div class="stat" id="stat" aria-live="off">ממתין לעט או לאצבע</div>
     </details>
+    <details class="dsec" data-k="help" open><summary>עזרה</summary>
+      <div class="actions"><button class="btn" id="helpOpen">עזרה: איך עושים את זה?</button></div>
+    </details>
     <details class="dsec" data-k="fb" id="fbSec" hidden open><summary>משוב</summary>
       <div class="actions"><button class="btn" id="fbOpen">משוב ורעיונות</button></div>
     </details>
@@ -394,6 +397,14 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
     <p class="ver" id="ver"></p>
   </aside>
 
+  <div class="sheet" id="hp" hidden>
+    <div class="card wide" role="dialog" aria-label="עזרה" style="max-height:88vh;overflow:auto">
+      <h2 class="ttl">עזרה</h2>
+      <input id="hpQ" type="search" placeholder="מה רוצים לעשות? למשל: לסובב בחירה" aria-label="שאלה" autocomplete="off" style="width:100%;box-sizing:border-box;margin-bottom:8px">
+      <div id="hpOut"></div>
+      <div class="row"><button class="btn" id="hpClose">סגור</button></div>
+    </div>
+  </div>
   <div class="sheet" id="fb" hidden>
     <div class="card wide" role="dialog" aria-label="משוב ורעיונות">
       <h2 class="ttl">משוב ורעיונות</h2>
@@ -1302,7 +1313,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='58';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='59';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1714,6 +1725,53 @@ $('#tfOk').addEventListener('click',tfApply);$('#tfNo').addEventListener('click'
 $('#tfReset').addEventListener('click',()=>{if(!tfP)return;tfP=tfDef();tfSync();tfRender(true);});
 $('#tfFh').addEventListener('click',()=>{if(!tfP)return;tfP.fx*=-1;tfRender(true);});
 $('#tfFv').addEventListener('click',()=>{if(!tfP)return;tfP.fy*=-1;tfRender(true);});
+
+/* ---------- help: ready-made answers; unclear or missing answers go to the feedback box ---------- */
+const HELP=[
+ {t:'לבחור אזור (בחירה)',k:['בחיר','לבחור','בוחר','סמן','סימון','מסמן','לאסו','מלבן','בחר'],a:['פתחו את התפריט ← "אפקטים וכלים".','בחרו אחד מכלי הבחירה: מלבן, חופשית, קווים, צבע או מברשת.','גררו על הציור כדי לסמן. הכפתור בסרגל שמופיע בתחתית ("חדש" / "הוסף" / "הפחת") קובע אם הבחירה מחליפה, מרחיבה או מקטינה את הקיימת.','"בחר הכול" מסמן את כל הדף, ו"הפוך" הופך את האזור המסומן.']},
+ {t:'בחירה בצבע',k:['בחירה בצבע','לפי צבע','צבע מסוים','אותו צבע'],a:['בחרו בכלי "בחירה: צבע" ב"אפקטים וכלים".','הקישו על הצבע שרוצים לסמן. כל הפיקסלים הדומים לו יסומנו.','רמת הדמיון נקבעת בסליידר "סבילות".']},
+ {t:'לצייר בחירה כמו במברשת',k:['מברשת בחיר','לצייר בחיר','בחירה במברשת','להרחיב בחיר','להקטין בחיר'],a:['בחרו בכלי "בחירה: מברשת" ב"אפקטים וכלים".','מה שמציירים הופך לבחירה. אפשר להמשיך לצייר כדי להרחיב אותה.','סליידר הגודל קובע את עובי המברשת וסליידר הרכות מרכך את הקצוות.','כדי להקטין את הבחירה, לחצו על הכפתור בסרגל עד שכתוב "הפחת" וציירו.']},
+ {t:'להזיז, להגדיל, לסובב או להטות בחירה',k:['סובב','מסוב','מזיז','מגדיל','מקטין','מטים','סיבוב','להזיז','הזז','להגדיל','להקטין','הגדל','הקטנ','להטות','הטיה','פרספקטיב','תלת','לשנות גודל','למתוח','להפוך'],a:['סמנו אזור בכלי בחירה כלשהו.','בסרגל הבחירה לחצו "הזז / שנה גודל".','גררו על הציור כדי להזיז. הסליידרים משנים גודל, רוחב, גובה וסיבוב. שתי ההטיות נותנות מראה של עומק.','"הפוך ↔" ו"הפוך ↕" הופכים כמו מראה. לסיום לחצו "החל", או "בטל" כדי לחזור.','הפעולה חלה על השכבה הפעילה, והיא לא עובדת בשכבה נעולה.']},
+ {t:'גזור, העתק והדבק',k:['גוזר','מעתיק','מדביק','לגזור','גזור','גזיר','להעתיק','העתק','הדבק','להדביק','שכפל','לשכפל חלק'],a:['סמנו אזור ובסרגל הבחירה לחצו "גזור" או "העתק".','"הדבק" מדביק באותה שכבה ובאותו מקום. "הדבק בשכבה חדשה" מדביק באותו מקום בשכבה חדשה.','מה שהודבק הופך לבחירה. כדי להזיז אותו לחצו "הזז / שנה גודל".','ההעתקה נשמרת עד שסוגרים את האפליקציה.']},
+ {t:'שכבות',k:['שכבה','שכבות','שכבת','layer'],a:['הכפתור עם סמל השכבות למעלה פותח את לוח השכבות.','שם את מוסיף שכבה חדשה, שכפול ומחיקה. החצים מזיזים שכבה למעלה או למטה.','העין מסתירה שכבה, והמנעול נועל אותה. הסליידר קובע שקיפות.','לחיצה ארוכה על שם שכבה משנה את שמה.']},
+ {t:'לבטל פעולה',k:['לבטל','ביטול','חזרה','אופס','טעות','undo','redo','לחזור'],a:['החץ המעוקל בשורה העליונה מבטל את הפעולה האחרונה, והחץ שליד מחזיר אותה.']},
+ {t:'צבעים והצבעים שלי',k:['צבע','צבעים','פלטה','פלטת','להוסיף צבע','גוון','פיפטה'],a:['בתפריט ← "צבע": בחרו מהצבעים הקבועים, או לחצו על העיגול הגדול כדי לבחור צבע חופשי.','כדי לשמור צבע לפרויקט, לחצו על הכפתור + שליד העיגול. הוא נכנס ל"הצבעים שלי".','לחיצה ארוכה על צבע ב"הצבעים שלי" מוחקת אותו.','"שמור פלטה" שומר את הצבעים שלכם במכשיר לשימוש בפרויקטים אחרים, ו"פלטות שמורות" טוענת אותן.','כדי לקחת צבע מהציור עצמו, בחרו בכלי "פיפטה" ב"אפקטים וכלים".']},
+ {t:'גודל המברשת ורכות הקצוות',k:['גודל','עובי','עבה','דק','רכות','רך','קצוות','טשטוש קצ'],a:['סליידר הגודל בתפריט ← "קו". אפשר גם להקיש על המספר שלידו ולהקליד גודל מדויק.','סליידר הרכות מרכך את הקצוות של מברשות שכבתיות, צורות, מברשת הבחירה וקידום הצבע.']},
+ {t:'למחוק או לטשטש',k:['מוחק','מחוק','מחק','למחוק','מחיקה','טשטוש','לטשטש','חדות','להבהיר','להכהות','מריחה','למרוח'],a:['"מחק" נמצא בתפריט ← "מברשות". הסליידר קובע עוצמה.','טשטוש, חדות, הבהרה, הכהיה ומריחה נמצאים ב"אפקטים וכלים" ומשפיעים על מה שכבר מצויר.']},
+ {t:'צורות',k:['צורה','צורות','עיגול','קו ישר','משולש','כוכב','חץ','מעוין','אליפסה'],a:['בחרו בכלי "צורות" ב"מברשות". בסרגל שמופיע בחרו סוג צורה, קו ומילוי.','גררו על הציור כדי לצייר את הצורה.']},
+ {t:'למלא אזור בצבע',k:['מילוי','למלא','דלי'],a:['בחרו בכלי "דלי" ב"מברשות" והקישו על האזור שרוצים למלא.']},
+ {t:'לשכפל אזור מהציור',k:['משכפל','שכפול','clone','סטמפ','לשכפל מה'],a:['בחרו בכלי "שכפול" ב"אפקטים וכלים".','הקישו על האזור שרוצים להעתיק ממנו, ואז צרו על המקום החדש.']},
+ {t:'שמירה ופתיחה של עבודה',k:['שומר','פותח','שמור','לשמור','שמירה','לפתוח','פתח','פתיחה','להמשיך','קובץ','ייצוא','לייצא','תמונה'],a:['"שמור עבודה" בתפריט ← "דף" שומר קובץ עם כל השכבות, כדי להמשיך מאותה נקודה. "פתח עבודה" טוען אותו.','"שמור" (ליד "רקע") שומר את הציור כתמונה רגילה.','"שתף עבודה" שולח את הקובץ לאפליקציה אחרת, למשל וואטסאפ.']},
+ {t:'לייבא עבודה או תמונה',k:['מייבא','ייבוא','לייבא','יבוא','להוסיף תמונה','להכניס','תמונה'],a:['"ייבא עבודה לפרויקט" מוסיף את השכבות של קובץ OBPaint מעל הפרויקט הנוכחי, מהמכשיר או מהתיקייה המשותפת.','"תמונה" בתפריט ← "דף" מוסיפה תמונה רגילה.']},
+ {t:'תיקייה משותפת',k:['תיקייה','משותפת','שיתוף','לשתף','להעלות','קבוצה'],a:['"תיקייה משותפת" בתפריט ← "דף". מקלידים קוד גישה ושם, ו"העלה את העבודה הנוכחית" שומר שם את הציור.','"פתח" ליד עבודה טוען אותה, ו"מחק" מוחק עבודה שהעליתם מהמכשיר הזה.']},
+ {t:'זום והזזת התצוגה',k:['זום','להתקרב','לקרב','להרחיק','להזיז תצוגה','לגלול','מפה','ניווט','הזזת הדף'],a:['צביטה בשתי אצבעות מקרבת ומרחיקה, וגרירה בשתי אצבעות מזיזה את הדף.','הכפתור עם העדשה למעלה מחזיר את התצוגה. "מפת ניווט" מראה איפה אתם בדף כשמקרבים.']},
+ {t:'גודל הדף ורקע',k:['גודל הדף','דף','רקע','נייר','להגדיל דף','חדש','ציור חדש','לנקות'],a:['"גודל הדף" ו"רקע" בתפריט ← "דף". "ציור חדש" מתחיל מחדש (יש אישור לפני המחיקה).']},
+ {t:'עט, לחץ ודחיית כף יד',k:['עט','לחץ','כף יד','אצבע','מגע','סטייל'],a:['בתפריט ← "עט ומגע" אפשר לבחור איך הלחץ משפיע על הקו, ולהפעיל "דחיית כף יד" כדי שכף היד לא תצייר.']}
+];
+const hpBox=$('#hp'),hpQ=$('#hpQ'),hpOut=$('#hpOut');
+const hpNorm=t=>String(t||'').toLowerCase().replace(/[\u0591-\u05C7"'׳״.,?!]/g,'');
+function hpToFb(text){hpBox.hidden=true;fbKind='idea';document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c.dataset.kind==='idea'?'true':'false'));fbText.value=text;fbMsg.textContent=FB_DEF;fb.hidden=false;fbText.focus();}
+function hpCard(h,q){
+  const d=document.createElement('div');d.className='hpc';d.style.cssText='border-top:1px solid var(--line);padding:10px 0;display:flex;flex-direction:column;gap:6px';
+  const t=document.createElement('strong');t.textContent=h.t;d.appendChild(t);
+  const ol=document.createElement('ol');ol.style.cssText='margin:0;padding-inline-start:22px;display:flex;flex-direction:column;gap:4px;font-size:13px';h.a.forEach(x=>{const li=document.createElement('li');li.textContent=x;ol.appendChild(li);});d.appendChild(ol);
+  const b=document.createElement('button');b.type='button';b.className='btn';b.style.alignSelf='flex-start';b.textContent='לא הבנתי את ההסבר';
+  b.addEventListener('click',()=>hpToFb('לא הבנתי את ההסבר בעזרה על "'+h.t+'"'+(q?' (שאלה: '+q+')':'')+'. אפשר לשפר אותו?'));d.appendChild(b);return d;
+}
+function hpRender(){
+  const q=hpNorm(hpQ.value).trim();hpOut.textContent='';
+  if(!q){const p=document.createElement('p');p.className='shnote';p.textContent='כתבו מה רוצים לעשות, או בחרו נושא:';hpOut.appendChild(p);
+    const w=document.createElement('div');w.style.cssText='display:flex;flex-wrap:wrap;gap:6px';HELP.forEach(h=>{const b=document.createElement('button');b.type='button';b.className='btn';b.textContent=h.t;b.addEventListener('click',()=>{hpOut.textContent='';hpOut.appendChild(hpCard(h,''));});w.appendChild(b);});hpOut.appendChild(w);return;}
+  const sc=HELP.map(h=>({h,n:h.k.reduce((n,k)=>n+(q.includes(hpNorm(k))?hpNorm(k).length:0),0)})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n).slice(0,3);
+  if(!sc.length){const p=document.createElement('p');p.textContent='לא מצאתי הסבר מתאים. אפשר לנסות מילים אחרות, או לשלוח את השאלה כהצעה לשיפור.';hpOut.appendChild(p);
+    const b=document.createElement('button');b.type='button';b.className='btn';b.textContent='שלחו את השאלה כהצעה';b.addEventListener('click',()=>hpToFb('שאלה בעזרה שאין לה תשובה: '+hpQ.value.trim()));hpOut.appendChild(b);return;}
+  sc.forEach(x=>hpOut.appendChild(hpCard(x.h,hpQ.value.trim())));
+  const b=document.createElement('button');b.type='button';b.className='btn';b.style.marginTop='6px';b.textContent='זה לא מה שחיפשתי: שלחו כהצעה';b.addEventListener('click',()=>hpToFb('שאלה בעזרה שלא נענתה: '+hpQ.value.trim()));hpOut.appendChild(b);
+}
+$('#helpOpen').addEventListener('click',()=>{setDrawer(false);hpQ.value='';hpRender();hpBox.hidden=false;});
+$('#hpClose').addEventListener('click',()=>{hpBox.hidden=true;});
+hpBox.addEventListener('click',e=>{if(e.target===hpBox)hpBox.hidden=true;});
+hpQ.addEventListener('input',hpRender);
 
 /* ---------- paint bucket ---------- */
 function doFill(x,y){
