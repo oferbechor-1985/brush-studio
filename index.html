@@ -80,10 +80,10 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 .brush span{text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .bgt{}
-#bgtext{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
-#bgtextIn{position:absolute;left:50%;top:50%;width:230%;height:230%;transform:translate(-50%,-50%) rotate(-24deg);display:flex;flex-direction:column;justify-content:center;gap:54px}
-#bgtextIn div{white-space:nowrap;font:700 24px/1.2 var(--f-ui);color:#7fe0d4;display:flex;gap:90px}
-#bgtextIn div:nth-child(even){transform:translateX(-380px)}
+#bgtext{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;will-change:transform;pointer-events:none;z-index:0}
+#bgtextIn{position:absolute;transform:translate(-50%,-50%) rotate(-24deg);display:flex;flex-direction:column;justify-content:center;gap:2.2em}
+#bgtextIn div{white-space:nowrap;font-weight:700;line-height:1.2;color:#7fe0d4;display:flex;gap:3.7em}
+#bgtextIn div:nth-child(even){transform:translateX(-15em)}
 .stage{position:fixed;inset:0;overflow:hidden;background:var(--ws);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:crosshair}
 .stage canvas{position:absolute;top:0;left:0;display:block}
 #live{pointer-events:none}
@@ -876,7 +876,7 @@ BR.forEach(b=>{const el=document.createElement('button');el.type='button';el.cla
   el.innerHTML='<canvas class="pv"></canvas><span></span>';el.querySelector('span').textContent=b.name;
   el.addEventListener('click',()=>selectBrush(b));(FXIDS.has(b.id)?brFx:brEl).appendChild(el);b.el=el;});
 {const t='יש לך רעיון מגניב להוסיף לאפליקציה, נתקלת בבעיה, בא לך סתם לפרגן? יש כפתור משוב ורעיונות בדיוק בשביל זה',box=$('#bgtextIn');
-  for(let i=0;i<22;i++){const r=document.createElement('div');for(let k=0;k<5;k++){const sp=document.createElement('span');sp.textContent=t;r.appendChild(sp);}box.appendChild(r);}}
+  for(let i=0;i<46;i++){const r=document.createElement('div');for(let k=0;k<5;k++){const sp=document.createElement('span');sp.textContent=t;r.appendChild(sp);}box.appendChild(r);}}
 document.querySelectorAll('.dsec,.dsub').forEach(d=>{
   const k='dsec-'+d.dataset.k;try{const v=localStorage.getItem(k);if(v==='0')d.open=false;}catch(_){}
   d.addEventListener('toggle',()=>{try{localStorage.setItem(k,d.open?'1':'0');}catch(_){}});
@@ -1313,7 +1313,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='59';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='60';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1322,6 +1322,7 @@ const rot=(x,y,a)=>{const c=Math.cos(a*RAD),s=Math.sin(a*RAD);return [x*c-y*s,x*
 function toPageS(sx,sy){sx-=vx;sy-=vy;const c=Math.cos(va*RAD),s=Math.sin(va*RAD);return [(sx*c+sy*s)/vz,(-sx*s+sy*c)/vz];}
 function toPage(cx,cy){const r=srect();return toPageS(cx-r.left,cy-r.top);}
 let movT=0;
+const bgtext=$('#bgtext');let bgKey='';
 function applyView(){
   const sw=stage.clientWidth,sh=stage.clientHeight;
   vz=clamp(vz,MINZ,MAXZ);
@@ -1333,6 +1334,8 @@ function applyView(){
   stage.classList.add('moving');clearTimeout(movT);movT=setTimeout(()=>stage.classList.remove('moving'),180);
   world.style.setProperty('--iz',(1/vz).toFixed(4));
   world.style.transform=`translate(${vx}px,${vy}px) rotate(${va}deg) scale(${vz})`;
+  bgtext.style.transform=world.style.transform;
+  if(bgKey!==W+'x'+H){bgKey=W+'x'+H;const m=Math.max(W,H),bi=bgtext.firstElementChild;bi.style.left=W/2+'px';bi.style.top=H/2+'px';bi.style.width=bi.style.height=(m*6)+'px';bi.style.fontSize=(m*.03)+'px';}
   const a=Math.round(wrapA(va)*10)/10;
   $('#viewBtn').textContent=Math.round(vz*100)+'%'+(Math.abs(a)>=.1?' · '+a+'°':'');
   zm.value=Math.round(100*Math.log(vz/MINZ)/LZ);$('#zmOut').textContent=Math.round(vz*100)+'%';viewChanged();
