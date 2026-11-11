@@ -1294,7 +1294,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='56';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='57';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1520,8 +1520,11 @@ function sbStamp(x,y){
 }
 function sbLine(x0,y0,x1,y1){const d=Math.hypot(x1-x0,y1-y0),step=Math.max(.5,st.size*.12),n=Math.max(1,Math.ceil(d/step));for(let i=1;i<=n;i++)sbStamp(x0+(x1-x0)*i/n,y0+(y1-y0)*i/n);}
 function sbPreview(){
-  renderSel();selv.hidden=false;const c=selv.getContext('2d');c.setTransform(1,0,0,1,0,0);
-  if(!sel){c.fillStyle='rgba(10,12,14,.4)';c.fillRect(0,0,selv.width,selv.height);}
+  renderSel();selv.hidden=false;
+  if(selv.width!==main.width||selv.height!==main.height){selv.width=main.width;selv.height=main.height;}
+  selv.style.width=W+'px';selv.style.height=H+'px';
+  const c=selv.getContext('2d');c.setTransform(1,0,0,1,0,0);c.globalCompositeOperation='source-over';c.globalAlpha=1;
+  if(!sel){c.clearRect(0,0,selv.width,selv.height);c.fillStyle='rgba(10,12,14,.4)';c.fillRect(0,0,selv.width,selv.height);}
   if(selMode!=='sub'){c.globalCompositeOperation='destination-out';c.drawImage(sbM,0,0);c.globalCompositeOperation='source-over';}
   c.globalAlpha=selMode==='sub'?.6:.25;c.drawImage(sbT,0,0);c.globalAlpha=1;
 }
