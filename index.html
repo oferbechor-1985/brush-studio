@@ -632,7 +632,7 @@ const BR=[
  {id:'selpoly',name:'בחירה: קווים',size:1,pv:1,sel:'poly',noPv:true,dab(){}},
  {id:'selcolor',name:'בחירה: צבע',size:1,pv:1,sel:'color',noPv:true,dab(){}},
  {id:'selbrush',name:'בחירה: מברשת',size:30,pv:1,sel:'brush',noPv:true,dab(){}},
- {id:'eraser',name:'מחק',size:30,pv:10,sp:.1,erase:true,layered:true,
+ {id:'eraser',name:'מחק',size:30,pv:10,sp:.1,erase:true,layered:true,mul:.4,
   dab(c,p){c.globalAlpha=p.base;c.fillStyle='#000';c.beginPath();c.arc(p.x,p.y,p.s*.5,0,TAU);c.fill();}}
 ];
 
@@ -954,7 +954,7 @@ function blurInto(ctx,src,sg){
   c.drawImage(src,0,0,1,1,0,0,M,M);c.drawImage(src,w-1,0,1,1,M+w,0,M,M);c.drawImage(src,0,h-1,1,1,0,M+h,M,M);c.drawImage(src,w-1,h-1,1,1,M+w,M+h,M,M);
   ctx.filter=`blur(${sg}px)`;ctx.drawImage(t,-M,-M);ctx.filter='none';
 }
-function fadeOk(b){return !!((b.layered&&!b.erase&&!b.soften)||b.adv||b.shape||b.sel==='brush');}
+function fadeOk(b){return !!((b.layered&&!b.soften)||b.adv||b.shape||b.sel==='brush');}
 function fadePx(b){return fadeOk(b)&&(b.layered||b.shape)?st.fade/100*st.size*.35*(b.mul||1):0;}
 function selectBrush(b){
   if(b.sel==='brush'&&selMode==='new')selMode='add';
@@ -1196,7 +1196,7 @@ stage.addEventListener('pointerdown',e=>{
     moveMark(x+cloneOff[0],y+cloneOff[1]);
   }
   let target=mctx;
-  if(b.layered){lctx.clearRect(0,0,W,H);live.style.opacity=b.erase?0:st.opacity*(b.alpha||1)*active.opacity;live.style.filter=fadePx(b)>.2?`blur(${fadePx(b)}px)`:'';liveMask(true);target=lctx;}
+  if(b.layered){lctx.clearRect(0,0,W,H);live.style.opacity=b.erase?0:st.opacity*(b.alpha||1)*active.opacity;live.style.filter=(!b.erase&&fadePx(b)>.2)?`blur(${fadePx(b)}px)`:'';liveMask(true);target=lctx;}
   act={id:e.pointerId,type:e.pointerType,b,x,y,t:e.timeStamp,v:0,sim:.55,pr:.55,stroke:new Stroke(b,target,{...st,off:cloneOff})};
   act.pr=pressure(e,act);act.stroke.add(x,y,act.pr);
 });
@@ -1235,10 +1235,20 @@ stage.addEventListener('pointermove',e=>{
 });
 /* the eraser draws a mask on the live canvas; the layer shows the committed pixels minus that mask at the chosen opacity */
 function eraseSync(bx){
-  if(!bx)return;const x=Math.max(0,Math.floor(bx[0]*DPR)),y=Math.max(0,Math.floor(bx[1]*DPR)),w=Math.min(main.width,Math.ceil(bx[2]*DPR))-x,h=Math.min(main.height,Math.ceil(bx[3]*DPR))-y;if(w<=0||h<=0)return;
+  if(!bx)return;
+  const fp=fadePx(cur)*DPR,M=fp>.2?Math.ceil(fp*3):0;
+  const x=Math.max(0,Math.floor(bx[0]*DPR)-M),y=Math.max(0,Math.floor(bx[1]*DPR)-M),w=Math.min(main.width,Math.ceil(bx[2]*DPR)+M)-x,h=Math.min(main.height,Math.ceil(bx[3]*DPR)+M)-y;if(w<=0||h<=0)return;
   mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalCompositeOperation='source-over';mctx.globalAlpha=1;mctx.clearRect(x,y,w,h);mctx.drawImage(shadow,x,y,w,h,x,y,w,h);
-  mctx.globalCompositeOperation='destination-out';mctx.globalAlpha=st.opacity;mctx.drawImage(live,x,y,w,h,x,y,w,h);mctx.restore();
-  if(sel)enforceSel(bx);
+  mctx.globalCompositeOperation='destination-out';mctx.globalAlpha=st.opacity;
+  if(M){
+    // soft edge: the hard stroke mask is blurred (page edges replicated so erasing right up to the edge stays complete)
+    const sx=Math.max(0,x-M),sy=Math.max(0,y-M),ex=Math.min(main.width,x+w+M),ey=Math.min(main.height,y+h+M),sw=ex-sx,sh=ey-sy;
+    const src=document.createElement('canvas');src.width=sw;src.height=sh;src.getContext('2d').drawImage(live,sx,sy,sw,sh,0,0,sw,sh);
+    const out=document.createElement('canvas');out.width=sw;out.height=sh;blurInto(out.getContext('2d'),src,fp);
+    mctx.drawImage(out,x-sx,y-sy,w,h,x,y,w,h);
+  }else mctx.drawImage(live,x,y,w,h,x,y,w,h);
+  mctx.restore();
+  if(sel)enforceSel([x/DPR,y/DPR,(x+w)/DPR,(y+h)/DPR]);
 }
 function end(e){
   touches.delete(e.pointerId);
@@ -1314,7 +1324,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='63';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='64';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
