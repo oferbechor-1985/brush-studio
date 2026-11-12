@@ -412,6 +412,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
         <button type="button" class="chip" data-kind="bug" aria-pressed="false">תקלה</button>
         <button type="button" class="chip" data-kind="other" aria-pressed="false">אחר</button>
       </div>
+      <p id="fbSrc" hidden style="margin:0 0 6px;font-size:12px;font-weight:700;color:var(--accent)">מקור: תפריט העזרה (הסימון נוסף להערה אוטומטית)</p>
       <textarea id="fbText" maxlength="1500" placeholder="מה הייתם רוצים לשפר או להוסיף? אפשר גם לתאר תקלה." aria-label="ההערה"></textarea>
       <input class="hp" id="fbWebsite" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
       <p id="fbMsg">ההערה נשלחת למפתח האפליקציה. אל תכתבו בה פרטים אישיים.</p>
@@ -1313,7 +1314,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='62';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='63';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1753,7 +1754,8 @@ const HELP=[
 ];
 const hpBox=$('#hp'),hpQ=$('#hpQ'),hpOut=$('#hpOut');
 const hpNorm=t=>String(t||'').toLowerCase().replace(/[\u0591-\u05C7"'׳״.,?!]/g,'');
-function hpToFb(text){hpBox.hidden=true;fbKind='idea';document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c.dataset.kind==='idea'?'true':'false'));fbText.value=text;fbMsg.textContent=FB_DEF;fb.hidden=false;fbText.focus();}
+let fbHelp=false;
+function hpToFb(text){fbHelp=true;$('#fbSrc').hidden=false;hpBox.hidden=true;fbKind='idea';document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c.dataset.kind==='idea'?'true':'false'));fbText.value=text;fbMsg.textContent=FB_DEF;fb.hidden=false;fbText.focus();}
 function hpCard(h,q){
   const d=document.createElement('div');d.className='hpc';d.style.cssText='border-top:1px solid var(--line);padding:10px 0;display:flex;flex-direction:column;gap:6px';
   const t=document.createElement('strong');t.textContent=h.t;d.appendChild(t);
@@ -2223,7 +2225,7 @@ async function flushFb(){
 }
 addEventListener('online',flushFb);setTimeout(flushFb,3000);
 document.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click',()=>{fbKind=ch.dataset.kind;document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c===ch?'true':'false'));}));
-$('#fbOpen').addEventListener('click',()=>{setDrawer(false);fbMsg.textContent=FB_DEF;fb.hidden=false;fbText.focus();});
+$('#fbOpen').addEventListener('click',()=>{fbHelp=false;$('#fbSrc').hidden=true;setDrawer(false);fbMsg.textContent=FB_DEF;fb.hidden=false;fbText.focus();});
 function closeFb(){stopRec();fb.hidden=true;}
 $('#fbClose').addEventListener('click',closeFb);
 fb.addEventListener('click',e=>{if(e.target===fb)closeFb();});
@@ -2265,8 +2267,8 @@ fbSend.addEventListener('click',async()=>{
   if(Date.now()-fbLast<8000){fbMsg.textContent='אפשר לשלוח שוב בעוד כמה שניות.';return;}
   stopRec();
   fbLast=Date.now();fbSend.disabled=true;
-  const item={kind:fbKind,text,voice:fbVoice,version:APP_VERSION,input:lastInput,screen:innerWidth+'x'+innerHeight,lang:navigator.language,website:$('#fbWebsite').value};
-  try{await postFb(item);fbMsg.textContent='תודה, ההערה נשלחה.';fbText.value='';fbVoice=false;}
+  const item={kind:fbKind,text:fbHelp?'[עזרה] '+text:text,voice:fbVoice,version:APP_VERSION,input:lastInput,screen:innerWidth+'x'+innerHeight,lang:navigator.language,website:$('#fbWebsite').value};
+  try{await postFb(item);fbMsg.textContent='תודה, ההערה נשלחה.';fbText.value='';fbVoice=false;fbHelp=false;$('#fbSrc').hidden=true;}
   catch(_){const q=lsGet('fbq')||[];q.push(item);lsSet('fbq',q.slice(-20));fbMsg.textContent='אין חיבור כרגע. ההערה נשמרה ותישלח בפעם הבאה שהאפליקציה תיפתח.';fbText.value='';fbVoice=false;}
   fbSend.disabled=false;
 });
