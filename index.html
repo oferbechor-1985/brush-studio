@@ -917,6 +917,14 @@ function openColorPop(start,onChange){
   svE.addEventListener('pointermove',e=>{if(svE.hasPointerCapture&&svE.hasPointerCapture(e.pointerId))mv(e);});
   hE.addEventListener('input',()=>{h=+hE.value;push();});
   xE.addEventListener('input',()=>{const t=xE.value.trim().replace(/^#?/,'#').toLowerCase();if(/^#[0-9a-f]{6}$/.test(t)){[h,sa,v]=rgb2hsv(hex2rgb(t));draw();last=t;onChange(t);}});
+  if(myColors.length){
+    const wrap=document.createElement('div');wrap.style.cssText='margin-top:10px';
+    const lb=document.createElement('div');lb.textContent='הצבעים שלי';lb.style.cssText='font-size:12px;color:var(--muted);margin-bottom:6px';
+    const row=document.createElement('div');row.className='sw';
+    myColors.forEach(c=>{const b=document.createElement('button');b.type='button';b.style.background=c;b.setAttribute('aria-label',c);
+      b.addEventListener('click',()=>{[h,sa,v]=rgb2hsv(hex2rgb(c));draw();xE.value=c;last=c;onChange(c);});row.appendChild(b);});
+    wrap.append(lb,row);ov.querySelector('.cp').after(wrap);
+  }
   const close=()=>{ov.remove();};ov.querySelector('button').addEventListener('click',close);ov.addEventListener('pointerdown',e=>{if(e.target===ov)close();});
   xE.value=start;draw();
 }
@@ -1324,7 +1332,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='64';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='65';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
