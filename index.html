@@ -1332,7 +1332,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='66';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='67';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -2140,14 +2140,46 @@ $('#projInImp').addEventListener('change',async e=>{
   await importProjectText(await f.text());
 });
 /* adds the layers of an OBPaint file on top of the current project (centred, original size) */
+/* choose which layers of a file to import (all by default) */
+function pickImportLayers(arr,room){
+  return new Promise(res=>{
+    const ov=document.createElement('div');ov.className='sheet';ov.style.zIndex=40;
+    const card=document.createElement('div');card.className='card';card.setAttribute('role','dialog');card.setAttribute('aria-label','בחירת שכבות לייבוא');card.style.cssText='width:min(420px,100%);max-height:88vh;overflow:auto';
+    const h=document.createElement('p');h.innerHTML='<strong>אילו שכבות לייבא?</strong>';card.appendChild(h);
+    const info=document.createElement('p');info.className='shnote';card.appendChild(info);
+    const list=document.createElement('div');list.style.cssText='display:flex;flex-direction:column;gap:6px;margin:6px 0';
+    const boxes=[];
+    for(let i=arr.length-1;i>=0;i--){ // top layer first, like the layers panel
+      const q=arr[i],lab=document.createElement('label');lab.style.cssText='display:flex;align-items:center;gap:10px;padding:4px 0;border-top:1px solid var(--line);cursor:pointer';
+      const cb=document.createElement('input');cb.type='checkbox';cb.checked=true;cb.dataset.i=i;cb.style.cssText='width:22px;height:22px;flex:none';boxes.push(cb);
+      const im=document.createElement('img');im.src=q.png;im.alt='';im.style.cssText='width:56px;height:44px;object-fit:contain;flex:none;border-radius:6px;background:repeating-conic-gradient(#ddd 0 25%,#fff 0 50%) 0 0/12px 12px';
+      const nm=document.createElement('span');nm.textContent=(q.name||'שכבה '+(i+1))+(q.visible===false?' (מוסתרת)':'');nm.style.cssText='flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      lab.append(cb,im,nm);list.appendChild(lab);
+    }
+    card.appendChild(list);
+    const row=document.createElement('div');row.className='row';
+    const all=document.createElement('button'),ok=document.createElement('button'),no=document.createElement('button');
+    for(const b of [all,ok,no]){b.type='button';b.className='btn';}
+    all.textContent='הכול / כלום';ok.textContent='ייבא';no.textContent='ביטול';row.append(all,no,ok);card.appendChild(row);
+    const upd=()=>{const n=boxes.filter(b=>b.checked).length;info.textContent='נבחרו '+n+' מתוך '+arr.length+'. אפשר להוסיף עד '+room+' שכבות לפרויקט הזה.';ok.disabled=n<1||n>room;};
+    boxes.forEach(b=>b.addEventListener('change',upd));
+    all.addEventListener('click',()=>{const on=boxes.some(b=>!b.checked);boxes.forEach(b=>b.checked=on);upd();});
+    const done=v=>{ov.remove();res(v);};
+    ok.addEventListener('click',()=>done(boxes.filter(b=>b.checked).map(b=>+b.dataset.i).sort((a,b)=>a-b)));
+    no.addEventListener('click',()=>done(null));ov.addEventListener('pointerdown',e=>{if(e.target===ov)done(null);});
+    ov.appendChild(card);document.body.appendChild(ov);upd();
+  });
+}
 async function importProjectText(text){
   const say=t=>{hint.textContent=t;hint.hidden=false;setTimeout(()=>{if(hint.textContent===t)hint.hidden=true;},4000);};
   try{
     const j=JSON.parse(text);
     if(j.app!=='OBPaint'||!Array.isArray(j.layers)||!j.layers.length||!(j.w>0&&j.h>0)||j.layers.length>MAXL)throw 0;
-    if(layers.length+j.layers.length>MAXL){say('אי אפשר לייבא: בפרויקט '+layers.length+' שכבות ובקובץ '+j.layers.length+', והמקסימום '+MAXL+'.');return false;}
-    if((layers.length+j.layers.length)*main.width*main.height>MAXLPX){say('הדף גדול מדי בשביל עוד שכבות.');return false;}
-    if(!confirm('להוסיף '+j.layers.length+' שכבות מהקובץ לפרויקט הנוכחי?'))return false;
+    for(const q of j.layers)if(typeof q.png!=='string'||!q.png.startsWith('data:image/png'))throw 0;
+    const room=Math.max(0,Math.min(MAXL-layers.length,Math.floor(MAXLPX/(main.width*main.height))-layers.length));
+    if(room<1){say('אין מקום לשכבות נוספות בפרויקט הזה.');return false;}
+    const pick=await pickImportLayers(j.layers,room);if(!pick)return false;
+    j.layers=pick.map(i=>j.layers[i]);
     const bm=[];for(const q of j.layers){if(typeof q.png!=='string'||!q.png.startsWith('data:image/png'))throw 0;bm.push(await createImageBitmap(await (await fetch(q.png)).blob()));}
     const Ls=[],idx=layers.length,dx=Math.round((W-j.w)/2*DPR),dy=Math.round((H-j.h)/2*DPR);
     j.layers.forEach((q,i)=>{
