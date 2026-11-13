@@ -182,6 +182,8 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 .lhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .llist{display:flex;flex-direction:column;gap:6px;max-height:34vh;overflow:auto;padding:2px}
 .lrow{display:grid;grid-template-columns:40px 40px minmax(0,1fr) 92px 40px;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:2px 6px 2px 2px}
+.lrow[aria-selected="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+#lMulti[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
 .lrow[aria-current="true"]{border-color:var(--accent);background:var(--accent-soft)}
 .lname{appearance:none;background:none;border:0;color:var(--fg);font:500 14px var(--f-ui);min-height:44px;padding:0 6px;text-align:start;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
 .lop{width:100%;min-width:0;accent-color:var(--accent);min-height:44px}
@@ -269,6 +271,8 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
       <button class="btn" id="lRen">שם</button>
       <button class="btn" id="lClr">נקה שכבה</button>
       <button class="btn" id="lDel">מחק</button>
+      <button class="btn" id="lMulti" aria-pressed="false" title="סימון כמה שכבות כדי להזיז ולשנות גודל יחד">בחירה מרובה</button>
+      <button class="btn" id="lMove" hidden title="הזזה, הגדלה וסיבוב של השכבות שסומנו יחד">הזז / שנה גודל</button>
     </div>
     <p id="lMsg"></p>
   </div>
@@ -1067,8 +1071,8 @@ let dirty=false;try{dirty=localStorage.getItem('dirty')==='1';}catch(_){}
 let projCache=null,projWarm=0;
 function setDirty(v){if(v)projCache=null;dirty=v;try{localStorage.setItem('dirty',v?'1':'0');}catch(_){}}
 function pushHist(e){setDirty(true);hist.length=hi;hist.push(e);if(hist.length>60)hist.shift();hi=hist.length;syncBtns();scheduleSave();}
-function undo(){if(tfOn){tfCancel();return;}if(hi<=0)return;exitFrame();const e=hist[--hi];if(e.resize)unResize(e);else if(e.layerOp)layerUndo(e);else if(layers.includes(e.layer)){if(e.layer!==active)setActive(e.layer);mctx.putImageData(e.before,e.x,e.y);sctx.putImageData(e.before,e.x,e.y);}syncBtns();scheduleSave();}
-function redo(){if(tfOn)return;if(hi>=hist.length)return;exitFrame();const e=hist[hi++];if(e.resize)doResize(e.l,e.t,e.r,e.b,false);else if(e.layerOp)layerRedo(e);else if(layers.includes(e.layer)){if(e.layer!==active)setActive(e.layer);mctx.putImageData(e.after,e.x,e.y);sctx.putImageData(e.after,e.x,e.y);}syncBtns();scheduleSave();}
+function undo(){if(tfOn){tfCancel();return;}if(hi<=0)return;exitFrame();let g;do{const e=hist[--hi];g=e.g;if(e.resize)unResize(e);else if(e.layerOp)layerUndo(e);else if(layers.includes(e.layer)){if(e.layer!==active)setActive(e.layer);mctx.putImageData(e.before,e.x,e.y);sctx.putImageData(e.before,e.x,e.y);}}while(g&&hi>0&&hist[hi-1].g===g);syncBtns();scheduleSave();}
+function redo(){if(tfOn)return;if(hi>=hist.length)return;exitFrame();let g;do{const e=hist[hi++];g=e.g;if(e.resize)doResize(e.l,e.t,e.r,e.b,false);else if(e.layerOp)layerRedo(e);else if(layers.includes(e.layer)){if(e.layer!==active)setActive(e.layer);mctx.putImageData(e.after,e.x,e.y);sctx.putImageData(e.after,e.x,e.y);}}while(g&&hi<hist.length&&hist[hi].g===g);syncBtns();scheduleSave();}
 undoBtn.addEventListener('click',undo);redoBtn.addEventListener('click',redo);
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();}});
 
@@ -1332,7 +1336,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='67';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='68';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1416,12 +1420,13 @@ function setLayersPanel(o){
   if(o){setDrawer(false);setPanel(false);renderLayersUI();}
   updateCloneUI();
 }
+let multiOn=false;const multiSet=new Set();
 function renderLayersUI(){mmMark();
   const clr=$('#clearTxt');if(clr&&!clearTimer)clr.textContent=clearLabel();
   if(lp.hidden)return;
   llist.textContent='';
   for(const L of [...layers].reverse()){
-    const row=document.createElement('div');row.className='lrow';row.setAttribute('aria-current',L===active?'true':'false');
+    const row=document.createElement('div');row.className='lrow';row.setAttribute('aria-current',L===active?'true':'false');if(multiOn)row.setAttribute('aria-selected',multiSet.has(L)?'true':'false');
     const eye=document.createElement('button');eye.type='button';eye.className='btn leye';eye.setAttribute('aria-pressed',L.visible?'true':'false');eye.setAttribute('aria-label','הצג או הסתר: '+L.name);
     eye.innerHTML='<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
     eye.addEventListener('click',()=>{L.visible=!L.visible;styleLayer(L);renderLayersUI();scheduleSave();});
@@ -1435,16 +1440,19 @@ function renderLayersUI(){mmMark();
     ['pointerup','pointerleave','pointercancel'].forEach(ev=>nm.addEventListener(ev,()=>clearTimeout(lt)));
     nm.addEventListener('contextmenu',e=>{e.preventDefault();});nm.addEventListener('dblclick',rename);
     nm.title='לחיצה ארוכה: שינוי שם';
-    nm.addEventListener('click',()=>{if(llong){llong=false;return;}if(L!==active)setActive(L);});
+    nm.addEventListener('click',()=>{if(llong){llong=false;return;}if(multiOn){if(multiSet.has(L))multiSet.delete(L);else multiSet.add(L);renderLayersUI();return;}if(L!==active)setActive(L);});
     const op=document.createElement('input');op.type='range';op.className='lop';op.min=0;op.max=100;op.value=Math.round(L.opacity*100);op.setAttribute('aria-label','אטימות: '+L.name);
     const out=document.createElement('output');out.textContent=op.value+'%';
     op.addEventListener('input',()=>{L.opacity=op.value/100;styleLayer(L);out.textContent=op.value+'%';if(L===active&&act&&act.b&&act.b.layered)live.style.opacity=st.opacity*(act.b.alpha||1)*L.opacity;scheduleSave();});
     editNum(out,0,100,()=>op.value,v=>{op.value=v;op.dispatchEvent(new Event('input'));});
     row.append(eye,lk,nm,op,out);llist.appendChild(row);
   }
+  for(const L of [...multiSet])if(!layers.includes(L))multiSet.delete(L);
+  $('#lMove').hidden=!(multiOn&&multiSet.size>0);
   const i=layers.indexOf(active);
   $('#lUp').disabled=i>=layers.length-1;$('#lDown').disabled=i<=0;$('#lMerge').disabled=i<=0;$('#lDel').disabled=layers.length<2;
 }
+$('#lMulti').addEventListener('click',()=>{multiOn=!multiOn;multiSet.clear();if(multiOn)multiSet.add(active);$('#lMulti').setAttribute('aria-pressed',multiOn?'true':'false');renderLayersUI();layerMsg(multiOn?'נגעו בשכבות כדי לסמן או לבטל סימון.':'');});
 let lClrT=0;$('#lClr').addEventListener('click',()=>{
   const b=$('#lClr');if(active.locked){layerMsg('השכבה נעולה.');return;}
   if(!lClrT){b.textContent='לחצו שוב';b.classList.add('warn');lClrT=setTimeout(()=>{lClrT=0;b.textContent='נקה שכבה';b.classList.remove('warn');},2500);return;}
@@ -1645,6 +1653,7 @@ function pasteClip(newLayer){
 }
 function newLayer_(){const L=newLayer();sizeLayer(L,main.width,main.height,W,H);const idx=layers.indexOf(active)+1;insertLayer(L,idx);pushHist({layerOp:true,op:'add',L,idx});return L;}
 $('#sPaste').addEventListener('click',()=>pasteClip(false));$('#sPasteNew').addEventListener('click',()=>pasteClip(true));
+let tfMulti=null;
 let tfP=null,tfSrc=null,tfBox=null,tfQ=0,tfRaf=0,tfOut=null;
 const mul3=(a,b)=>{const r=new Array(9);for(let i=0;i<3;i++)for(let j=0;j<3;j++)r[i*3+j]=a[i*3]*b[j]+a[i*3+1]*b[3+j]+a[i*3+2]*b[6+j];return r;};
 function inv3(m){const [a,b,c,d,e,f,g,h,i]=m,A=e*i-f*h,B=-(d*i-f*g),C=d*h-e*g,D=-(b*i-c*h),E=a*i-c*g,F=-(a*h-b*g),G=b*f-c*e,Hh=-(a*f-c*d),I=a*e-b*d,det=a*A+b*B+c*C;if(!det)return null;return [A/det,D/det,G/det,B/det,E/det,Hh/det,C/det,F/det,I/det];}
@@ -1659,15 +1668,15 @@ function tfMatrix(){
   const T=[1,0,tfBox.cx+p.tx, 0,1,tfBox.cy+p.ty, 0,0,1];
   return mul3(T,mul3(Rz,mul3(M,S)));
 }
-function tfWarp(q){
-  const H=tfMatrix(),w=tfSrc.width,h=tfSrc.height,iH=inv3(H);if(!iH)return null;
+function tfWarp(q,src){
+  src=src||tfSrc;const H=tfMatrix(),w=src.width,h=src.height,iH=inv3(H);if(!iH)return null;
   const pr=(x,y)=>{const u=H[0]*x+H[1]*y+H[2],v=H[3]*x+H[4]*y+H[5],z=H[6]*x+H[7]*y+H[8];return [u/z,v/z];};
   const cs=[pr(-w/2,-h/2),pr(w/2,-h/2),pr(w/2,h/2),pr(-w/2,h/2)];
   const W2=main.width,H2=main.height;
   let x0=Math.floor(Math.min(...cs.map(c=>c[0]))),y0=Math.floor(Math.min(...cs.map(c=>c[1]))),x1=Math.ceil(Math.max(...cs.map(c=>c[0]))),y1=Math.ceil(Math.max(...cs.map(c=>c[1])));
   x0=Math.max(0,x0);y0=Math.max(0,y0);x1=Math.min(W2,x1);y1=Math.min(H2,y1);
   if(x1<=x0||y1<=y0)return {x:0,y:0,w:0,h:0,data:null,q};
-  const ow=Math.ceil((x1-x0)/q),oh=Math.ceil((y1-y0)/q),out=new ImageData(ow,oh),o=out.data,s=tfSrc.data;
+  const ow=Math.ceil((x1-x0)/q),oh=Math.ceil((y1-y0)/q),out=new ImageData(ow,oh),o=out.data,s=src.data;
   for(let j=0;j<oh;j++){const Y=y0+(j+.5)*q;
     for(let i=0;i<ow;i++){const X=x0+(i+.5)*q;
       const u=iH[0]*X+iH[1]*Y+iH[2],v=iH[3]*X+iH[4]*Y+iH[5],z=iH[6]*X+iH[7]*Y+iH[8];if(z<=0)continue;
@@ -1683,10 +1692,11 @@ const tfTmp=document.createElement('canvas');
 function tfRender(final){
   if(!tfOn)return;
   const go=()=>{tfRaf=0;
-    const big=(main.width*main.height)>1.2e6&&!final,q=big?2:1,r=tfWarp(q);tfOut=r;
-    lctx.save();lctx.setTransform(1,0,0,1,0,0);lctx.clearRect(0,0,live.width,live.height);
-    if(r&&r.data){tfTmp.width=r.data.width;tfTmp.height=r.data.height;tfTmp.getContext('2d').putImageData(r.data,0,0);lctx.imageSmoothingEnabled=true;lctx.drawImage(tfTmp,r.x,r.y,r.w,r.h);}
-    lctx.restore();live.style.opacity=active.opacity;live.style.filter='';liveMask(false);
+    const big=(main.width*main.height)>1.2e6&&!final,q=big?2:1;
+    lctx.save();lctx.setTransform(1,0,0,1,0,0);lctx.clearRect(0,0,live.width,live.height);lctx.imageSmoothingEnabled=true;
+    for(const it of (tfMulti||[{src:tfSrc,L:active}])){const r=tfWarp(q,it.src);tfOut=r;
+      if(r&&r.data){tfTmp.width=r.data.width;tfTmp.height=r.data.height;tfTmp.getContext('2d').putImageData(r.data,0,0);lctx.globalAlpha=tfMulti?it.L.opacity:1;lctx.drawImage(tfTmp,r.x,r.y,r.w,r.h);}}
+    lctx.restore();live.style.opacity=tfMulti?1:active.opacity;live.style.filter='';liveMask(false);
   };
   if(final){cancelAnimationFrame(tfRaf);go();}else if(!tfRaf)tfRaf=requestAnimationFrame(go);
 }
@@ -1705,8 +1715,34 @@ function selBounds(){
   for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(d[(y*w+x)*4+3]){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
   return x1<0?null:{x:x0,y:y0,w:x1-x0+1,h:y1-y0+1};
 }
+function contentBounds(Ls){
+  let x0=1e9,y0=1e9,x1=-1,y1=-1;
+  for(const L of Ls){const w=L.cv.width,h=L.cv.height,d=L.ctx.getImageData(0,0,w,h).data;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(d[(y*w+x)*4+3]>0){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}}
+  return x1<0?null:{x:x0,y:y0,w:x1-x0+1,h:y1-y0+1};
+}
+function tfGroup(){return multiOn&&multiSet.size?layers.filter(L=>multiSet.has(L)):[active];}
+function tfStartMulti(grp){
+  const ok=grp.filter(L=>L.visible&&!L.locked);
+  if(!ok.length){hint.textContent='כל השכבות שסומנו מוסתרות או נעולות.';hint.hidden=false;return;}
+  const b=sel?selBounds():contentBounds(ok);if(!b){hint.textContent='אין מה להזיז בשכבות שסומנו.';hint.hidden=false;return;}
+  tfMulti=ok.map(L=>{
+    const orig=L.ctx.getImageData(b.x,b.y,b.w,b.h);
+    const c=document.createElement('canvas');c.width=b.w;c.height=b.h;const g=c.getContext('2d',{willReadFrequently:true});
+    g.drawImage(L.cv,b.x,b.y,b.w,b.h,0,0,b.w,b.h);if(sel){g.globalCompositeOperation='destination-in';g.drawImage(sel.cv,b.x,b.y,b.w,b.h,0,0,b.w,b.h);}
+    const src=g.getImageData(0,0,b.w,b.h);
+    L.ctx.save();L.ctx.setTransform(1,0,0,1,0,0);if(sel){L.ctx.globalCompositeOperation='destination-out';L.ctx.drawImage(sel.cv,b.x,b.y,b.w,b.h,b.x,b.y,b.w,b.h);}else L.ctx.clearRect(b.x,b.y,b.w,b.h);L.ctx.restore();
+    return {L,orig,src};
+  });
+  tfSrc=tfMulti[0].src;tfBox={x:b.x,y:b.y,w:b.w,h:b.h,cx:b.x+b.w/2,cy:b.y+b.h/2};
+  tfOn=true;tfLayer=active;tfP=tfDef();tfSync();setDrawer(false);setLayersPanel(false);
+  selv.hidden=true;$('#tfp').hidden=false;sbar.hidden=true;tfRender(true);
+}
 function tfStart(){
-  if(!sel||tfOn)return;
+  if(tfOn)return;
+  const grp=tfGroup();
+  if(grp.length>1||!sel){tfStartMulti(grp);return;}
+  if(grp[0]!==active)setActive(grp[0]);
   if(!active.visible){hint.textContent='השכבה הפעילה מוסתרת.';hint.hidden=false;return;}
   if(active.locked){hint.textContent='השכבה הפעילה נעולה. בטלו את הנעילה בלוח השכבות.';hint.hidden=false;return;}
   const b=selBounds();if(!b){clearSel();return;}
@@ -1719,17 +1755,40 @@ function tfStart(){
   selv.hidden=true;$('#tfp').hidden=false;sbar.hidden=true;tfRender(true);
 }
 function tfEnd(){
-  tfOn=false;tfLayer=null;tfP=null;tfSrc=null;tfOut=null;cancelAnimationFrame(tfRaf);tfRaf=0;
+  tfOn=false;tfLayer=null;tfP=null;tfSrc=null;tfOut=null;tfMulti=null;cancelAnimationFrame(tfRaf);tfRaf=0;
   $('#tfp').hidden=true;lctx.save();lctx.setTransform(1,0,0,1,0,0);lctx.clearRect(0,0,live.width,live.height);lctx.restore();live.style.opacity='';
   renderSel();updateCloneUI();
 }
 function tfCancel(){
   if(!tfOn)return;
+  if(tfMulti){for(const it of tfMulti)it.L.ctx.putImageData(it.orig,tfBox.x,tfBox.y);tfEnd();return;}
   const b=tfBox;mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalCompositeOperation='copy';mctx.drawImage(shadow,b.x,b.y,b.w,b.h,b.x,b.y,b.w,b.h);mctx.restore();
   tfEnd();
 }
+function tfApplyMulti(){
+  const b=tfBox,rs=tfMulti.map(it=>tfWarp(1,it.src)),act0=active;
+  let x0=b.x,y0=b.y,x1=b.x+b.w,y1=b.y+b.h;
+  for(const r of rs)if(r&&r.data){x0=Math.min(x0,r.x);y0=Math.min(y0,r.y);x1=Math.max(x1,r.x+r.w);y1=Math.max(y1,r.y+r.h);}
+  tfOn=false;const gid=Date.now()+Math.random(),hadSel=sel,union=hadSel?document.createElement('canvas'):null;
+  if(union){union.width=sel.cv.width;union.height=sel.cv.height;}
+  tfMulti.forEach((it,i)=>{
+    it.L.ctx.putImageData(it.orig,b.x,b.y);setActive(it.L); // shadow = untouched layer, so undo restores exactly
+    mctx.save();mctx.setTransform(1,0,0,1,0,0);
+    if(hadSel){mctx.globalCompositeOperation='destination-out';mctx.drawImage(sel.cv,b.x,b.y,b.w,b.h,b.x,b.y,b.w,b.h);}else mctx.clearRect(b.x,b.y,b.w,b.h);
+    const r=rs[i];mctx.globalCompositeOperation='source-over';
+    if(r&&r.data){tfTmp.width=r.data.width;tfTmp.height=r.data.height;tfTmp.getContext('2d').putImageData(r.data,0,0);mctx.drawImage(tfTmp,r.x,r.y);
+      if(union){const m=new ImageData(r.data.width,r.data.height),md=m.data,sd=r.data.data;for(let k=0;k<sd.length;k+=4){md[k]=md[k+1]=md[k+2]=255;md[k+3]=sd[k+3];}tfTmp.getContext('2d').putImageData(m,0,0);union.getContext('2d').drawImage(tfTmp,r.x,r.y);}}
+    mctx.restore();
+    const keep=sel;sel=null;commitPatch([x0/DPR,y0/DPR,x1/DPR,y1/DPR]);sel=keep;hist[hi-1].g=gid;
+  });
+  if(layers.includes(act0)&&active!==act0)setActive(act0);
+  if(union){sel.ctx.save();sel.ctx.setTransform(1,0,0,1,0,0);sel.ctx.clearRect(0,0,sel.cv.width,sel.cv.height);sel.ctx.drawImage(union,0,0);sel.ctx.restore();}
+  tfOn=true;tfEnd();
+  if(sel){if(selEmpty())clearSel();else finishSel();}
+}
 function tfApply(){
   if(!tfOn)return;
+  if(tfMulti){tfApplyMulti();return;}
   const r=tfWarp(1);tfOn=false; // lets saveNow and history run again
   const b=tfBox;let x0=b.x,y0=b.y,x1=b.x+b.w,y1=b.y+b.h;
   if(r&&r.data){tfTmp.width=r.data.width;tfTmp.height=r.data.height;tfTmp.getContext('2d').putImageData(r.data,0,0);
@@ -1745,6 +1804,7 @@ function tfApply(){
   if(selEmpty())clearSel();else finishSel();
 }
 $('#sTr').addEventListener('click',tfStart);
+$('#lMove').addEventListener('click',()=>{tfStart();});
 $('#tfOk').addEventListener('click',tfApply);$('#tfNo').addEventListener('click',tfCancel);
 $('#tfReset').addEventListener('click',()=>{if(!tfP)return;tfP=tfDef();tfSync();tfRender(true);});
 $('#tfFh').addEventListener('click',()=>{if(!tfP)return;tfP.fx*=-1;tfRender(true);});
