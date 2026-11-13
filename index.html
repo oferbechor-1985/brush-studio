@@ -616,9 +616,9 @@ const BR=[
  {id:'fill',name:'דלי צבע',size:1,pv:1,fill:true,noPv:true,dab(){}},
  {id:'blur',name:'טשטוש',size:40,pv:20,sp:.1,fx:'blur',noPv:true,dab(){}},
  {id:'sharpen',name:'חדות',size:40,pv:20,sp:.1,fx:'sharpen',noPv:true,dab(){}},
- {id:'burn',name:'הכהיה',size:40,pv:20,sp:.08,noPv:true,
+ {id:'burn',name:'הכהיה',size:40,pv:20,sp:.08,noPv:true,fd:true,
   dab(c,p){const r=p.s*.5;c.save();c.globalCompositeOperation='source-atop';const g=c.createRadialGradient(p.x,p.y,0,p.x,p.y,r),k=p.base*.14*(.4+.6*p.pr);
-    g.addColorStop(0,'rgba(0,0,0,'+k+')');g.addColorStop(.6,'rgba(0,0,0,'+k*.7+')');g.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=g;c.beginPath();c.arc(p.x,p.y,r,0,TAU);c.fill();c.restore();}},
+    g.addColorStop(0,'rgba(0,0,0,'+k+')');g.addColorStop(.6*(1-clamp((p.sg.fade||0)/100,0,.95)),'rgba(0,0,0,'+k*.7+')');g.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=g;c.beginPath();c.arc(p.x,p.y,r,0,TAU);c.fill();c.restore();}},
  {id:'advance',name:'קידום צבע',size:30,pv:20,sp:.08,adv:true,noPv:true,dab(){}},
  {id:'rainbow2',name:'קשת 2',size:20,pv:12,sp:.04,layered:true,adv2:true,
   dab(c,p){const k=p.k;
@@ -626,10 +626,10 @@ const BR=[
     k.dd+=Math.hypot(p.x-k.lx,p.y-k.ly);k.lx=p.x;k.ly=p.y;
     const h=(((k.h0+(p.sg.advDir<0?-1:1)*(p.sg.step||60)*k.dd/100)%360)+360)%360;
     c.fillStyle=`hsl(${h.toFixed(1)} ${(k.sa*100).toFixed(1)}% ${(k.li*100).toFixed(1)}%)`;c.globalAlpha=1;c.beginPath();c.arc(p.x,p.y,p.s*.5,0,TAU);c.fill();}},
- {id:'dodge',name:'הבהרה',size:40,pv:20,sp:.08,noPv:true,
+ {id:'dodge',name:'הבהרה',size:40,pv:20,sp:.08,noPv:true,fd:true,
   dab(c,p){const r=p.s*.5;c.save();c.globalCompositeOperation='source-atop';const g=c.createRadialGradient(p.x,p.y,0,p.x,p.y,r),k=p.base*.14*(.4+.6*p.pr);
-    g.addColorStop(0,'rgba(255,255,255,'+k+')');g.addColorStop(.6,'rgba(255,255,255,'+k*.7+')');g.addColorStop(1,'rgba(255,255,255,0)');c.fillStyle=g;c.beginPath();c.arc(p.x,p.y,r,0,TAU);c.fill();c.restore();}},
- {id:'clone',name:'שכפול',size:40,pv:20,sp:.08,clone:true,noPv:true,dab(){}},
+    g.addColorStop(0,'rgba(255,255,255,'+k+')');g.addColorStop(.6*(1-clamp((p.sg.fade||0)/100,0,.95)),'rgba(255,255,255,'+k*.7+')');g.addColorStop(1,'rgba(255,255,255,0)');c.fillStyle=g;c.beginPath();c.arc(p.x,p.y,r,0,TAU);c.fill();c.restore();}},
+ {id:'clone',name:'שכפול',size:40,pv:20,sp:.08,clone:true,noPv:true,fd:true,dab(){}},
  {id:'pick',name:'פיפטה',size:1,pv:1,pick:true,noPv:true,dab(){}},
  {id:'selrect',name:'בחירה: מלבן',size:1,pv:1,sel:'rect',noPv:true,dab(){}},
  {id:'sellasso',name:'בחירה: חופשית',size:1,pv:1,sel:'lasso',noPv:true,dab(){}},
@@ -641,13 +641,13 @@ const BR=[
 ];
 
 /* ---------- stroke engine ---------- */
-const softG=(c,d)=>{const g=c.createRadialGradient(d/2,d/2,0,d/2,d/2,d/2);g.addColorStop(0,'rgba(0,0,0,1)');g.addColorStop(.55,'rgba(0,0,0,.85)');g.addColorStop(1,'rgba(0,0,0,0)');return g;};
+const softG=(c,d,f)=>{const g=c.createRadialGradient(d/2,d/2,0,d/2,d/2,d/2);g.addColorStop(0,'rgba(0,0,0,1)');g.addColorStop(.55*(1-(f||0)),'rgba(0,0,0,.85)');g.addColorStop(1,'rgba(0,0,0,0)');return g;};
 /* replaces a soft round patch of the canvas with S (a d x d canvas holding the new pixels), at strength a */
-function softBlend(c,S,sx,sy,a){
+function softBlend(c,S,sx,sy,a,f){
   const d=S.cv.width,sc=S.c;
-  sc.globalCompositeOperation='destination-in';sc.globalAlpha=1;sc.fillStyle=softG(sc,d);sc.fillRect(0,0,d,d);sc.globalCompositeOperation='source-over';
+  sc.globalCompositeOperation='destination-in';sc.globalAlpha=1;sc.fillStyle=softG(sc,d,f);sc.fillRect(0,0,d,d);sc.globalCompositeOperation='source-over';
   c.save();c.setTransform(1,0,0,1,sx,sy);
-  c.globalCompositeOperation='destination-out';c.globalAlpha=a;c.fillStyle=softG(c,d);c.fillRect(0,0,d,d);
+  c.globalCompositeOperation='destination-out';c.globalAlpha=a;c.fillStyle=softG(c,d,f);c.fillRect(0,0,d,d);
   c.globalCompositeOperation='lighter';c.globalAlpha=a;c.drawImage(S.cv,0,0);
   c.restore();
 }
@@ -715,7 +715,7 @@ class Stroke{
     this.growBox(x,y,s.size*.5+4);
     const S=this.cl||(this.cl=mkc(d));
     S.c.globalCompositeOperation='copy';S.c.drawImage(shadow,sx+Math.round(o[0]*DPR),sy+Math.round(o[1]*DPR),d,d,0,0,d,d);
-    softBlend(c,S,sx,sy,clamp(s.opacity*(.75+.25*pr),.05,1));
+    softBlend(c,S,sx,sy,clamp(s.opacity*(.75+.25*pr),.05,1),clamp((s.fade||0)/100,0,.95));
   }
   dab(x,y,pr,ang){
     this.dab0(x,y,pr,ang);
@@ -966,7 +966,7 @@ function blurInto(ctx,src,sg){
   c.drawImage(src,0,0,1,1,0,0,M,M);c.drawImage(src,w-1,0,1,1,M+w,0,M,M);c.drawImage(src,0,h-1,1,1,0,M+h,M,M);c.drawImage(src,w-1,h-1,1,1,M+w,M+h,M,M);
   ctx.filter=`blur(${sg}px)`;ctx.drawImage(t,-M,-M);ctx.filter='none';
 }
-function fadeOk(b){return !!((b.layered&&!b.soften)||b.adv||b.shape||b.sel==='brush');}
+function fadeOk(b){return !!(b.fd||(b.layered&&!b.soften)||b.adv||b.shape||b.sel==='brush');}
 function fadePx(b){return fadeOk(b)&&(b.layered||b.shape)?st.fade/100*st.size*.35*(b.mul||1):0;}
 function selectBrush(b){
   if(b.sel==='brush'&&selMode==='new')selMode='add';
@@ -1336,7 +1336,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='69';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='70';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1832,7 +1832,7 @@ const HELP=[
  {t:'שכבות',k:['שכבה','שכבות','שכבת','layer'],a:['הכפתור עם סמל השכבות למעלה פותח את לוח השכבות.','שם את מוסיף שכבה חדשה, שכפול ומחיקה. החצים מזיזים שכבה למעלה או למטה.','העין מסתירה שכבה, והמנעול נועל אותה. הסליידר קובע שקיפות.','לחיצה ארוכה על שם שכבה משנה את שמה.']},
  {t:'לבטל פעולה',k:['לבטל','ביטול','חזרה','אופס','טעות','undo','redo','לחזור'],a:['החץ המעוקל בשורה העליונה מבטל את הפעולה האחרונה, והחץ שליד מחזיר אותה.']},
  {t:'צבעים והצבעים שלי',k:['צבע','צבעים','פלטה','פלטת','להוסיף צבע','גוון','פיפטה'],a:['בתפריט ← "צבע": בחרו מהצבעים הקבועים, או לחצו על העיגול הגדול כדי לבחור צבע חופשי.','כדי לשמור צבע לפרויקט, לחצו על הכפתור + שליד העיגול. הוא נכנס ל"הצבעים שלי".','לחיצה ארוכה על צבע ב"הצבעים שלי" מוחקת אותו.','"שמור פלטה" שומר את הצבעים שלכם במכשיר לשימוש בפרויקטים אחרים, ו"פלטות שמורות" טוענת אותן.','כדי לקחת צבע מהציור עצמו, בחרו בכלי "פיפטה" ב"אפקטים וכלים".']},
- {t:'גודל המברשת ורכות הקצוות',k:['גודל','עובי','עבה','דק','רכות','רך','קצוות','טשטוש קצ'],a:['סליידר הגודל בתפריט ← "קו". אפשר גם להקיש על המספר שלידו ולהקליד גודל מדויק.','סליידר הרכות מרכך את הקצוות של מברשות שכבתיות, צורות, מברשת הבחירה וקידום הצבע.']},
+ {t:'גודל המברשת ורכות הקצוות',k:['גודל','עובי','עבה','דק','רכות','רך','קצוות','טשטוש קצ'],a:['סליידר הגודל בתפריט ← "קו". אפשר גם להקיש על המספר שלידו ולהקליד גודל מדויק.','סליידר הרכות מרכך את הקצוות של מברשות שכבתיות, צורות, מברשת הבחירה, קידום הצבע, הכהיה, הבהרה ושכפול.']},
  {t:'למחוק או לטשטש',k:['מוחק','מחוק','מחק','למחוק','מחיקה','טשטוש','לטשטש','חדות','להבהיר','להכהות','מריחה','למרוח'],a:['"מחק" נמצא בתפריט ← "מברשות". הסליידר קובע עוצמה.','טשטוש, חדות, הבהרה, הכהיה ומריחה נמצאים ב"אפקטים וכלים" ומשפיעים על מה שכבר מצויר.']},
  {t:'צורות',k:['צורה','צורות','עיגול','קו ישר','משולש','כוכב','חץ','מעוין','אליפסה'],a:['בחרו בכלי "צורות" ב"מברשות". בסרגל שמופיע בחרו סוג צורה, קו ומילוי.','גררו על הציור כדי לצייר את הצורה.']},
  {t:'למלא אזור בצבע',k:['מילוי','למלא','דלי'],a:['בחרו בכלי "דלי" ב"מברשות" והקישו על האזור שרוצים למלא.']},
