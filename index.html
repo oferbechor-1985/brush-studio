@@ -1347,7 +1347,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='72';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='73';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1450,7 +1450,8 @@ function renderLayersUI(){mmMark();
     const nm=document.createElement('button');nm.type='button';nm.className='lname';let lt=0,llong=false;
     const paint=()=>{lk.setAttribute('aria-pressed',L.locked?'true':'false');eye.setAttribute('aria-pressed',L.visible?'true':'false');
       lk.innerHTML=L.locked?'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>':'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7-2.6"/></svg>';
-      lk.style.opacity=L.locked?'1':'.45';nm.textContent=(L.locked?'🔒 ':'')+L.name;};
+      lk.style.opacity=L.locked?'1':'.45';nm.textContent=(L.locked?'🔒 ':'')+L.name;
+      const o=row.querySelector('.lop'),u=row.querySelector('output');if(o){o.disabled=!!L.locked;o.style.opacity=L.locked?'.4':'';}if(u){u.style.opacity=L.locked?'.4':'';u.style.pointerEvents=L.locked?'none':'';u.tabIndex=L.locked?-1:0;}};
     row._L=L;row._paint=paint;
     for(const [btn,key] of [[eye,'visible'],[lk,'locked']]){
       btn.style.touchAction='none';
@@ -1466,9 +1467,9 @@ function renderLayersUI(){mmMark();
     nm.addEventListener('click',()=>{if(llong){llong=false;return;}if(multiOn){if(multiSet.has(L))multiSet.delete(L);else multiSet.add(L);renderLayersUI();return;}if(L!==active)setActive(L);});
     const op=document.createElement('input');op.type='range';op.className='lop';op.min=0;op.max=100;op.value=Math.round(L.opacity*100);op.setAttribute('aria-label','אטימות: '+L.name);
     const out=document.createElement('output');out.textContent=op.value+'%';
-    op.addEventListener('input',()=>{L.opacity=op.value/100;styleLayer(L);out.textContent=op.value+'%';if(L===active&&act&&act.b&&act.b.layered)live.style.opacity=st.opacity*(act.b.alpha||1)*L.opacity;scheduleSave();});
-    editNum(out,0,100,()=>op.value,v=>{op.value=v;op.dispatchEvent(new Event('input'));});
-    row.append(eye,lk,nm,op,out);llist.appendChild(row);
+    op.addEventListener('input',()=>{if(L.locked){op.value=Math.round(L.opacity*100);return;}L.opacity=op.value/100;styleLayer(L);out.textContent=op.value+'%';if(L===active&&act&&act.b&&act.b.layered)live.style.opacity=st.opacity*(act.b.alpha||1)*L.opacity;scheduleSave();});
+    editNum(out,0,100,()=>op.value,v=>{if(L.locked)return;op.value=v;op.dispatchEvent(new Event('input'));});
+    row.append(eye,lk,nm,op,out);paint();llist.appendChild(row);
   }
   for(const L of [...multiSet])if(!layers.includes(L))multiSet.delete(L);
   $('#lMove').hidden=!(multiOn&&multiSet.size>0);
@@ -1840,7 +1841,7 @@ const HELP=[
  {t:'לצייר בחירה כמו במברשת',k:['מברשת בחיר','לצייר בחיר','בחירה במברשת','להרחיב בחיר','להקטין בחיר'],a:['בחרו בכלי "בחירה: מברשת" ב"אפקטים וכלים".','מה שמציירים הופך לבחירה. אפשר להמשיך לצייר כדי להרחיב אותה.','סליידר הגודל קובע את עובי המברשת וסליידר הרכות מרכך את הקצוות.','כדי להקטין את הבחירה, לחצו על הכפתור בסרגל עד שכתוב "הפחת" וציירו.']},
  {t:'להזיז, להגדיל, לסובב או להטות בחירה',k:['סובב','מסוב','מזיז','מגדיל','מקטין','מטים','סיבוב','להזיז','הזז','להגדיל','להקטין','הגדל','הקטנ','להטות','הטיה','פרספקטיב','תלת','לשנות גודל','למתוח','להפוך'],a:['סמנו אזור בכלי בחירה כלשהו.','בסרגל הבחירה לחצו "הזז / שנה גודל".','גררו על הציור כדי להזיז. הסליידרים משנים גודל, רוחב, גובה וסיבוב. שתי ההטיות נותנות מראה של עומק.','"הפוך ↔" ו"הפוך ↕" הופכים כמו מראה. לסיום לחצו "החל", או "בטל" כדי לחזור.','הפעולה חלה על השכבה הפעילה, והיא לא עובדת בשכבה נעולה.']},
  {t:'גזור, העתק והדבק',k:['גוזר','מעתיק','מדביק','לגזור','גזור','גזיר','להעתיק','העתק','הדבק','להדביק','שכפל','לשכפל חלק'],a:['סמנו אזור ובסרגל הבחירה לחצו "גזור" או "העתק".','"הדבק" מדביק באותה שכבה ובאותו מקום. "הדבק בשכבה חדשה" מדביק באותו מקום בשכבה חדשה.','מה שהודבק הופך לבחירה. כדי להזיז אותו לחצו "הזז / שנה גודל".','ההעתקה נשמרת עד שסוגרים את האפליקציה.']},
- {t:'שכבות',k:['שכבה','שכבות','שכבת','layer'],a:['הכפתור עם סמל השכבות למעלה פותח את לוח השכבות.','שם את מוסיף שכבה חדשה, שכפול ומחיקה. החצים מזיזים שכבה למעלה או למטה.','העין מסתירה שכבה, והמנעול נועל אותה. הסליידר קובע שקיפות.','לחיצה ארוכה על שם שכבה משנה את שמה.']},
+ {t:'שכבות',k:['שכבה','שכבות','שכבת','layer'],a:['הכפתור עם סמל השכבות למעלה פותח את לוח השכבות.','שם את מוסיף שכבה חדשה, שכפול ומחיקה. החצים מזיזים שכבה למעלה או למטה.','העין מסתירה שכבה, והמנעול נועל אותה (שכבה נעולה לא ניתנת לציור או לשינוי שקיפות). הסליידר קובע שקיפות.','לחיצה ארוכה על שם שכבה משנה את שמה.']},
  {t:'לבטל פעולה',k:['לבטל','ביטול','חזרה','אופס','טעות','undo','redo','לחזור'],a:['החץ המעוקל בשורה העליונה מבטל את הפעולה האחרונה, והחץ שליד מחזיר אותה.']},
  {t:'צבעים והצבעים שלי',k:['צבע','צבעים','פלטה','פלטת','להוסיף צבע','גוון','פיפטה'],a:['בתפריט ← "צבע": בחרו מהצבעים הקבועים, או לחצו על העיגול הגדול כדי לבחור צבע חופשי.','כדי לשמור צבע לפרויקט, לחצו על הכפתור + שליד העיגול. הוא נכנס ל"הצבעים שלי".','לחיצה ארוכה על צבע ב"הצבעים שלי" מוחקת אותו.','"שמור פלטה" שומר את הצבעים שלכם במכשיר לשימוש בפרויקטים אחרים, ו"פלטות שמורות" טוענת אותן.','כדי לקחת צבע מהציור עצמו, בחרו בכלי "פיפטה" ב"אפקטים וכלים".']},
  {t:'גודל המברשת ורכות הקצוות',k:['גודל','עובי','עבה','דק','רכות','רך','קצוות','טשטוש קצ'],a:['סליידר הגודל בתפריט ← "קו". אפשר גם להקיש על המספר שלידו ולהקליד גודל מדויק.','סליידר הרכות מרכך את הקצוות של מברשות שכבתיות, צורות, מברשת הבחירה, קידום הצבע, הכהיה, הבהרה ושכפול.']},
