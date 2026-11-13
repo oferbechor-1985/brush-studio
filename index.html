@@ -441,6 +441,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
       </div>
     </div>
   </div>
+  <div class="sheet" id="svd" hidden><div class="card" role="dialog" aria-label="העבודה נשמרה"><p><strong>העבודה נשמרה</strong></p><p id="svdMsg"></p><div class="row"><button class="btn" id="svdOk">אישור</button><button class="btn" id="svdOpen">העבודות שלי</button></div></div></div>
   <div class="sheet" id="wk" hidden>
     <div class="card" role="dialog" aria-label="העבודות שלי" style="width:min(420px,100%);max-height:86vh;overflow:auto">
       <p><strong>העבודות שלי</strong></p>
@@ -1346,7 +1347,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='71';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='72';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -2180,7 +2181,10 @@ async function saveProject(base){
   try{
     const blob=await buildProject(),a=document.createElement('a'),name=base+'.obpaint';
     a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),15000);
-    setDirty(false);setDrawer(false);hint.textContent='נשמר קובץ עבודה: '+name;hint.hidden=false;setTimeout(hideHint,3500);return true;
+    let inApp=false;try{inApp=await wkStore(base,false);}catch(_){}
+    setDirty(false);setDrawer(false);
+    $('#svdMsg').textContent='הקובץ "'+name+'" הורד למכשיר, בדרך כלל לתיקיית ההורדות (באפליקציית הקבצים או בהורדות של Chrome). אם אינו שם, חפשו קובץ חדש לפי תאריך.'+(inApp?' עותק נשמר גם בתוך האפליקציה: תפריט ← "דף" ← "העבודות שלי".':'');
+    $('#svd').hidden=false;return true;
   }catch(_){hint.textContent='שמירת קובץ העבודה לא הצליחה.';hint.hidden=false;return false;}
 }
 $('#projSave').addEventListener('click',()=>{saveProject();});
@@ -2311,17 +2315,22 @@ async function wkRefresh(){
   }
 }
 $('#wkOpen').addEventListener('click',()=>{setDrawer(false);wk.hidden=false;wkRefresh();});
+$('#svdOk').addEventListener('click',()=>{$('#svd').hidden=true;});
+$('#svdOpen').addEventListener('click',()=>{$('#svd').hidden=true;wk.hidden=false;wkRefresh();});
 $('#wkClose').addEventListener('click',()=>{wk.hidden=true;});
+/* stores the current drawing in the app under this name (same name = replaced); ask=true confirms before replacing */
+async function wkStore(name,ask){
+  const ms=await idbMetas(),old=ms.find(m=>m.name===name);
+  if(old&&ask&&!confirm('כבר יש עבודה בשם "'+name+'". להחליף אותה?'))return false;
+  const text=await (await buildProject()).text(),id=old?old.id:Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  await idbSet('work:'+id,text);await idbSet('wm:'+id,{id,name,at:new Date().toISOString(),n:layers.length,size:text.length,thumb:wkThumb()});
+  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist();}catch(_){}
+  return true;
+}
 $('#wkSave').addEventListener('click',async()=>{
   const name=await askName('','שם העבודה');if(name===null)return;
-  try{
-    const ms=await idbMetas(),old=ms.find(m=>m.name===name);
-    if(old&&!confirm('כבר יש עבודה בשם "'+name+'". להחליף אותה?'))return;
-    const text=await (await buildProject()).text(),id=old?old.id:Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-    await idbSet('work:'+id,text);await idbSet('wm:'+id,{id,name,at:new Date().toISOString(),n:layers.length,size:text.length,thumb:wkThumb()});
-    try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist();}catch(_){}
-    setDirty(false);wkSay('נשמר: '+name);await wkRefresh();wkSay('נשמר: '+name);
-  }catch(_){wkSay('השמירה לא הצליחה. ייתכן שנגמר המקום במכשיר.');}
+  try{if(!await wkStore(name,true))return;setDirty(false);await wkRefresh();wkSay('נשמר: '+name);}
+  catch(_){wkSay('השמירה לא הצליחה. ייתכן שנגמר המקום במכשיר.');}
 });
 /* ---------- shared folder (Cloudflare worker + KV, access code) ---------- */
 const GALLERY_URL='https://obpaint-gallery.ofer-bechor.workers.dev';
