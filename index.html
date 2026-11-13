@@ -306,7 +306,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
   <div class="pill tfp" id="tfp" hidden role="group" aria-label="שינוי גודל וסיבוב של הבחירה">
     <div class="tfg">
       <label>גודל<input type="range" id="tfSc" min="10" max="400" value="100"><output id="tfScOut">100%</output></label>
-      <label>סיבוב<input type="range" id="tfRot" min="-180" max="180" value="0"><output id="tfRotOut">0°</output></label>
+      <label>סיבוב<input type="range" id="tfRot" min="0" max="360" value="0"><output id="tfRotOut">0°</output></label>
       <label>רוחב<input type="range" id="tfSx" min="10" max="300" value="100"><output id="tfSxOut">100%</output></label>
       <label>גובה<input type="range" id="tfSy" min="10" max="300" value="100"><output id="tfSyOut">100%</output></label>
       <label>הטיה אופקית<input type="range" id="tfRy" min="-70" max="70" value="0"><output id="tfRyOut">0°</output></label>
@@ -1332,7 +1332,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='65';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='66';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1693,7 +1693,9 @@ function tfRender(final){
 const TFD={tfSc:['sc','%'],tfRot:['rot','°'],tfSx:['sx','%'],tfSy:['sy','%'],tfRx:['rx','°'],tfRy:['ry','°']};
 function tfSync(){for(const id in TFD){$('#'+id).value=tfP[TFD[id][0]];$('#'+id+'Out').textContent=Math.round(tfP[TFD[id][0]])+TFD[id][1];}}
 for(const id in TFD){
-  const el=$('#'+id);el.addEventListener('input',()=>{if(!tfP)return;tfP[TFD[id][0]]=+el.value;$('#'+id+'Out').textContent=Math.round(+el.value)+TFD[id][1];tfRender();});
+  const el=$('#'+id);el.addEventListener('input',()=>{if(!tfP)return;
+    if(id==='tfRot'){let r=+el.value;for(const a of [0,90,180,270,360])if(Math.abs(r-a)<=3){r=a;break;}el.value=r;} // slider sticks briefly at the right angles
+    tfP[TFD[id][0]]=+el.value;$('#'+id+'Out').textContent=Math.round(+el.value)+TFD[id][1];tfRender();});
   el.addEventListener('change',()=>tfRender(true));
   editNum($('#'+id+'Out'),+el.min,+el.max,()=>el.value,v=>{el.value=v;el.dispatchEvent(new Event('input',{bubbles:true}));tfRender(true);});
 }
