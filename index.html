@@ -1336,7 +1336,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='68';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='69';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1421,6 +1421,12 @@ function setLayersPanel(o){
   updateCloneUI();
 }
 let multiOn=false;const multiSet=new Set();
+let lDrag=null;
+function lDragApply(row){const d=lDrag;if(!d||!row||!row._L||d.seen.has(row._L))return;d.seen.add(row._L);const L=row._L;
+  if(L[d.key]===d.val&&d.seen.size>1)return;L[d.key]=d.val;if(d.key==='visible')styleLayer(L);row._paint();}
+document.addEventListener('pointermove',e=>{if(!lDrag)return;const el=document.elementFromPoint(e.clientX,e.clientY);lDragApply(el&&el.closest&&el.closest('.lrow'));});
+function lDragEnd(){if(!lDrag)return;lDrag=null;renderLayersUI();scheduleSave();}
+document.addEventListener('pointerup',lDragEnd);document.addEventListener('pointercancel',lDragEnd);
 function renderLayersUI(){mmMark();
   const clr=$('#clearTxt');if(clr&&!clearTimer)clr.textContent=clearLabel();
   if(lp.hidden)return;
@@ -1429,12 +1435,18 @@ function renderLayersUI(){mmMark();
     const row=document.createElement('div');row.className='lrow';row.setAttribute('aria-current',L===active?'true':'false');if(multiOn)row.setAttribute('aria-selected',multiSet.has(L)?'true':'false');
     const eye=document.createElement('button');eye.type='button';eye.className='btn leye';eye.setAttribute('aria-pressed',L.visible?'true':'false');eye.setAttribute('aria-label','הצג או הסתר: '+L.name);
     eye.innerHTML='<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
-    eye.addEventListener('click',()=>{L.visible=!L.visible;styleLayer(L);renderLayersUI();scheduleSave();});
     const lk=document.createElement('button');lk.type='button';lk.className='btn leye';lk.setAttribute('aria-pressed',L.locked?'true':'false');lk.setAttribute('aria-label','נעילה: '+L.name);lk.title='נעילת שכבה';
-    lk.innerHTML=L.locked?'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>':'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7-2.6"/></svg>';
-    lk.style.opacity=L.locked?'1':'.45';
-    lk.addEventListener('click',()=>{L.locked=!L.locked;renderLayersUI();scheduleSave();});
-    const nm=document.createElement('button');nm.type='button';nm.className='lname';nm.textContent=(L.locked?'🔒 ':'')+L.name;let lt=0,llong=false;
+    const nm=document.createElement('button');nm.type='button';nm.className='lname';let lt=0,llong=false;
+    const paint=()=>{lk.setAttribute('aria-pressed',L.locked?'true':'false');eye.setAttribute('aria-pressed',L.visible?'true':'false');
+      lk.innerHTML=L.locked?'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>':'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7-2.6"/></svg>';
+      lk.style.opacity=L.locked?'1':'.45';nm.textContent=(L.locked?'🔒 ':'')+L.name;};
+    row._L=L;row._paint=paint;
+    for(const [btn,key] of [[eye,'visible'],[lk,'locked']]){
+      btn.style.touchAction='none';
+      btn.addEventListener('pointerdown',e=>{if(e.button>0)return;e.preventDefault();lDrag={key,val:!L[key],seen:new Set()};lDragApply(row);});
+      btn.addEventListener('click',e=>{if(e.detail===0){L[key]=!L[key];if(key==='visible')styleLayer(L);renderLayersUI();scheduleSave();}});
+    }
+    paint();
     const rename=async()=>{llong=true;const n=await askName(L.name,'שם השכבה');if(n===null||n===L.name)return;L.name=n.slice(0,24);renderLayersUI();setDirty(true);scheduleSave();};
     nm.addEventListener('pointerdown',()=>{llong=false;clearTimeout(lt);lt=setTimeout(rename,550);});
     ['pointerup','pointerleave','pointercancel'].forEach(ev=>nm.addEventListener(ev,()=>clearTimeout(lt)));
