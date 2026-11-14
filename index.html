@@ -100,6 +100,9 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
   display:flex;gap:6px;padding:6px;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.2)}
 .fab .btn{position:relative}
 .dot{position:absolute;inset-inline-end:4px;bottom:4px;width:13px;height:13px;border-radius:50%;border:2px solid var(--panel);box-shadow:0 0 0 1px var(--line);background:#14181c}
+.dfold{display:flex;justify-content:center;padding:14px 0 18px;touch-action:manipulation;cursor:pointer}
+.dfold span{width:60%;height:6px;border-radius:3px;background:var(--line);display:block}
+.dfold:hover span,.dfold:focus-visible span{background:var(--accent)}
 .drawer{position:fixed;z-index:15;top:0;bottom:0;inset-inline-start:0;width:min(360px,88vw);overflow-y:auto;overscroll-behavior:contain;
   background:var(--panel);border-inline-end:1px solid var(--line);box-shadow:-8px 0 28px rgba(0,0,0,.28);
   padding:calc(env(safe-area-inset-top, 0px) + 12px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 24px) 16px;
@@ -401,6 +404,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
       </div>
     </details>
     <p class="ver" id="ver"></p>
+    <div class="dfold" id="dfold" role="button" tabindex="0" aria-label="קפל את התפריט (לחיצה כפולה)" title="לחיצה כפולה מקפלת את התפריט"><span></span></div>
   </aside>
 
   <div class="sheet" id="hp" hidden>
@@ -421,6 +425,8 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
       </div>
       <p id="fbSrc" hidden style="margin:0 0 6px;font-size:12px;font-weight:700;color:var(--accent)">מקור: תפריט העזרה (הסימון נוסף להערה אוטומטית)</p>
       <textarea id="fbText" maxlength="1500" placeholder="מה הייתם רוצים לשפר או להוסיף? אפשר גם לתאר תקלה." aria-label="ההערה"></textarea>
+      <div class="row" style="align-items:center"><button type="button" class="btn" id="fbImgBtn">צרף צילום מסך</button><button type="button" class="btn" id="fbImgDel" hidden>הסר</button><img id="fbImgPrev" alt="" hidden style="height:44px;border-radius:6px;border:1px solid var(--line)"></div>
+      <input type="file" id="fbImgIn" accept="image/*" hidden>
       <input class="hp" id="fbWebsite" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
       <p id="fbMsg">ההערה נשלחת למפתח האפליקציה. אל תכתבו בה פרטים אישיים.</p>
       <div class="row">
@@ -1068,6 +1074,10 @@ const drawer=$('#drawer'),menu=$('#menu');let drawerOpen=false;
 function setDrawer(o){if(o&&typeof warmProj==='function')warmProj();drawerOpen=o;drawer.classList.toggle('open',o);menu.setAttribute('aria-expanded',o?'true':'false');drawer.inert=!o;updateCloneUI();}
 menu.addEventListener('click',()=>{setPanel(false);setLayersPanel(false);setDrawer(!drawerOpen);});
 $('#dclose').addEventListener('click',()=>setDrawer(false));
+{const f=$('#dfold');let last=0;
+ f.addEventListener('pointerup',e=>{if(e.pointerType==='mouse')return;const t=e.timeStamp;if(t-last<400){last=0;setDrawer(false);}else last=t;}); // double tap on touch
+ f.addEventListener('dblclick',()=>setDrawer(false));
+ f.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setDrawer(false);}});}
 addEventListener('keydown',e=>{if(e.key==='Escape'){setDrawer(false);exitFrame();}});
 setDrawer(false);
 $('#paper').addEventListener('click',()=>{app.dataset.paper=app.dataset.paper==='light'?'dark':'light';queuePreviews();scheduleSave();});
@@ -1358,7 +1368,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='76';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='77';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -2409,7 +2419,16 @@ let fbKind='idea',fbVoice=false,rec=null,fbLast=0;
 const lsGet=k=>{try{return JSON.parse(localStorage.getItem(k)||'null');}catch(_){return null;}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(_){}};
 $('#fbSec').hidden=!FEEDBACK_URL;
-async function postFb(item){const r=await fetch(FEEDBACK_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(item)});const j=await r.json().catch(()=>null);if(!r.ok||!j||j.ok!==true)throw new Error('rejected');}
+async function postFb(item){const r=await fetch(FEEDBACK_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(item)});const j=await r.json().catch(()=>null);if(!r.ok||!j||j.ok!==true)throw new Error('rejected');return j;}
+/* optional screenshot: shrunk to a JPEG of at most 1280px before sending */
+let fbImg=null;
+function fbImgSet(d){fbImg=d;$('#fbImgPrev').hidden=!d;$('#fbImgDel').hidden=!d;if(d)$('#fbImgPrev').src=d;$('#fbImgBtn').textContent=d?'החלף צילום מסך':'צרף צילום מסך';}
+$('#fbImgBtn').addEventListener('click',()=>$('#fbImgIn').click());
+$('#fbImgDel').addEventListener('click',()=>fbImgSet(null));
+$('#fbImgIn').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{const bm=await createImageBitmap(f),k=Math.min(1,1280/Math.max(bm.width,bm.height)),c=document.createElement('canvas');c.width=Math.round(bm.width*k);c.height=Math.round(bm.height*k);
+    const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(bm,0,0,c.width,c.height);fbImgSet(c.toDataURL('image/jpeg',.72));}
+  catch(_){fbMsg.textContent='לא הצלחתי לקרוא את התמונה.';}});
 async function flushFb(){
   if(!FEEDBACK_URL)return;let q=lsGet('fbq')||[];if(!q.length)return;
   const left=[];for(const it of q){try{await postFb(it);}catch(_){left.push(it);}}lsSet('fbq',left);
@@ -2459,8 +2478,9 @@ fbSend.addEventListener('click',async()=>{
   stopRec();
   fbLast=Date.now();fbSend.disabled=true;
   const item={kind:fbKind,text:fbHelp?'[עזרה] '+text:text,voice:fbVoice,version:APP_VERSION,input:lastInput,screen:innerWidth+'x'+innerHeight,lang:navigator.language,website:$('#fbWebsite').value};
-  try{await postFb(item);fbMsg.textContent='תודה, ההערה נשלחה.';fbText.value='';fbVoice=false;fbHelp=false;$('#fbSrc').hidden=true;}
-  catch(_){const q=lsGet('fbq')||[];q.push(item);lsSet('fbq',q.slice(-20));fbMsg.textContent='אין חיבור כרגע. ההערה נשמרה ותישלח בפעם הבאה שהאפליקציה תיפתח.';fbText.value='';fbVoice=false;}
+  if(fbImg)item.img=fbImg;
+  try{const j=await postFb(item);fbMsg.textContent=fbImg&&!j.img?'ההערה נשלחה, אבל התמונה לא התקבלה (השרת עדיין לא מעודכן).':'תודה, ההערה נשלחה.';fbImgSet(null);fbText.value='';fbVoice=false;fbHelp=false;$('#fbSrc').hidden=true;}
+  catch(_){delete item.img;const q=lsGet('fbq')||[];q.push(item);lsSet('fbq',q.slice(-20));fbMsg.textContent='אין חיבור כרגע. ההערה נשמרה ותישלח בפעם הבאה שהאפליקציה תיפתח.';fbText.value='';fbVoice=false;}
   fbSend.disabled=false;
 });
 

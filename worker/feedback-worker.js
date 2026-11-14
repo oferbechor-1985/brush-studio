@@ -41,6 +41,17 @@ export default {
       screen: String(b.screen || '').slice(0, 20),
       lang: String(b.lang || '').slice(0, 10),
     };
+    // optional screenshot: a JPEG data URL, saved next to the note as inbox/<id>.jpg (max ~700 KB)
+    let imgSaved = false;
+    const m = /^data:image\/jpeg;base64,([A-Za-z0-9+\/=]+)$/.exec(String((b && b.img) || ''));
+    if (m && m[1].length < 950000) {
+      const ir = await fetch(`https://api.github.com/repos/${env.REPO}/contents/inbox/${id}.jpg`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json', 'User-Agent': 'brush-studio-feedback', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: `feedback image ${id}`, content: m[1] }),
+      });
+      if (ir.ok) { imgSaved = true; item.img = `${id}.jpg`; }
+    }
     const bytes = new TextEncoder().encode(JSON.stringify(item, null, 2));
     let bin = '';
     for (const c of bytes) bin += String.fromCharCode(c);
@@ -56,7 +67,7 @@ export default {
       body: JSON.stringify({ message: `feedback ${id}`, content: btoa(bin) }),
     });
     if (!res.ok) return reply({ error: 'store' }, 502, cors);
-    return reply({ ok: true, id }, 200, cors);
+    return reply({ ok: true, id, img: imgSaved }, 200, cors);
   },
 };
 
