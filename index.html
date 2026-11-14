@@ -1240,8 +1240,13 @@ stage.addEventListener('pointerdown',e=>{
   if(b.layered){lctx.clearRect(0,0,W,H);live.style.opacity=b.erase?0:st.opacity*(b.alpha||1)*active.opacity*(clr?.5:1);live.style.filter=(!b.erase&&fadePx(b)>.2)?`blur(${fadePx(b)}px)`:'';liveMask(true);target=lctx;}
   act={id:e.pointerId,type:e.pointerType,b,x,y,clr,t:e.timeStamp,v:0,sim:.55,pr:.55,stroke:new Stroke(b,target,{...st,off:cloneOff})};
   act.pr=pressure(e,act);act.stroke.add(x,y,act.pr);
+  // holding still for 2 seconds on the drawing picks the colour under the finger (the dab just drawn is undone)
+  clearTimeout(holdT);const hid=e.pointerId,hx=e.clientX,hy=e.clientY,ha=act;ha.h0=[hx,hy];
+  holdT=setTimeout(()=>{if(act!==ha||act.id!==hid)return;cancelStroke();const hex=sampleAt(x,y);if(!hex)return;setColor(hex);loupe.style.left=hx+'px';loupe.style.top=(hy-28)+'px';loupe.style.background=hex;loupe.hidden=false;dead.add(hid);setTimeout(()=>{loupe.hidden=true;},1200);},2000);
 });
+let holdT=0;
 stage.addEventListener('pointermove',e=>{
+  if(act&&act.h0&&e.pointerId===act.id&&Math.hypot(e.clientX-act.h0[0],e.clientY-act.h0[1])>10){clearTimeout(holdT);act.h0=null;}
   if(touches.has(e.pointerId))touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(act&&act.tf&&e.pointerId===act.id&&!gest){const [px,py]=pos(e);tfP.tx+=(px-act.px)*DPR;tfP.ty+=(py-act.py)*DPR;act.px=px;act.py=py;tfRender();return;}
   if(gest){
@@ -1292,6 +1297,7 @@ function eraseSync(bx){
   if(sel)enforceSel([x/DPR,y/DPR,(x+w)/DPR,(y+h)/DPR]);
 }
 function end(e){
+  clearTimeout(holdT);
   touches.delete(e.pointerId);
   if(dead.delete(e.pointerId))return;
   if(gest){if(touches.size<2){gest=null;for(const id of touches.keys())dead.add(id);}return;}
@@ -1368,7 +1374,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='77';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='78';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1871,6 +1877,7 @@ const HELP=[
  {t:'למלא אזור בצבע',k:['מילוי','למלא','דלי'],a:['בחרו בכלי "דלי" ב"מברשות" והקישו על האזור שרוצים למלא.']},
  {t:'לשכפל אזור מהציור',k:['משכפל','שכפול','clone','סטמפ','לשכפל מה'],a:['בחרו בכלי "שכפול" ב"אפקטים וכלים".','הקישו על האזור שרוצים להעתיק ממנו, ואז צרו על המקום החדש.']},
  {t:'העבודות שלי (שמירה בתוך האפליקציה)',k:['העבודות שלי','איפה העבודה','לא מוצא','אבדה','נעלמה','שמרתי ולא','רשימת עבודות'],a:['בתפריט ← "דף" ← "העבודות שלי" יש רשימה של העבודות שנשמרו בתוך האפליקציה, עם תצוגה מקדימה.','"שמור את העבודה הנוכחית" שומר עם כל השכבות. "פתח" טוען, "מחק" מוחק.','העבודות נשארות במכשיר הזה בלבד. להעברה למכשיר אחר השתמשו ב"שמור עבודה" או "שתף עבודה".']},
+ {t:'דגימת צבע מהציור בלחיצה ארוכה',k:['לדגום צבע','בחירת צבע מהציור','טפטפת','לחיצה ארוכה','להעתיק צבע'],a:['לחיצה ארוכה של שתי שניות על נקודה בציור, בלי להזיז את האצבע, הופכת את הצבע שמתחתיה לצבע הנוכחי.','הנקודה שצוירה בזמן הלחיצה מתבטלת. אפשר גם להשתמש במברשת "טפטפת".']},
  {t:'צבע שקוף (מחיקה בצורת מברשת)',k:['שקוף','צבע שקוף','שקיפות צבע','למחוק בצורת','מחק עם מברשת'],a:['בתפריט ← "צבע" לחצו "שקוף". מברשות שכבתיות (עט כדורי, דיו, טוש, מדגיש, קליגרפיה, שמן ועוד) ימחקו במקום לצבוע, בצורת המברשת.','בצורות, לחצו על הצבע של המילוי או של הקו ובחרו "שקוף": החלק הזה לא יצויר ולא ישנה שום שכבה.','מברשות כמו ספריי ויבשה עדיין לא תומכות בזה.']},
  {t:'שמירה ופתיחה של עבודה',k:['שומר','פותח','שמור','לשמור','שמירה','לפתוח','פתח','פתיחה','להמשיך','קובץ','ייצוא','לייצא','תמונה'],a:['"שמור עבודה" בתפריט ← "דף" שומר קובץ עם כל השכבות, כדי להמשיך מאותה נקודה. "פתח עבודה" טוען אותו.','"שמור" (ליד "רקע") שומר את הציור כתמונה רגילה.','"שתף עבודה" שולח את הקובץ לאפליקציה אחרת, למשל וואטסאפ.']},
  {t:'לייבא עבודה או תמונה',k:['מייבא','ייבוא','לייבא','יבוא','להוסיף תמונה','להכניס','תמונה'],a:['"ייבא עבודה לפרויקט" מוסיף את השכבות של קובץ OBPaint מעל הפרויקט הנוכחי, מהמכשיר או מהתיקייה המשותפת.','"תמונה" בתפריט ← "דף" מוסיפה תמונה רגילה.']},
