@@ -920,7 +920,7 @@ $('#shF').addEventListener('click',()=>{shp.fill=!shp.fill;if(!shp.fill&&!shp.st
 /* the same colour picker as the main one (colour square + hue + hex), for any custom colour */
 function openColorPop(start,onChange){
   const ov=document.createElement('div');ov.className='sheet';ov.style.zIndex=30;
-  ov.innerHTML='<div class="card" role="dialog" aria-label="צבע מותאם אישית" style="width:min(340px,100%)"><div class="cp" dir="ltr" style="margin:0"><div class="sv"><div class="svt"></div></div><input class="hue" type="range" min="0" max="360" step="1" value="0" aria-label="גוון"><input class="hex" maxlength="7" spellcheck="false" autocomplete="off" aria-label="קוד צבע"></div><button type="button" class="btn">סגור</button></div>';
+  ov.innerHTML='<div class="card" role="dialog" aria-label="צבע מותאם אישית" style="width:min(340px,100%)"><div class="cp" dir="ltr" style="margin:0"><div class="sv"><div class="svt"></div></div><input class="hue" type="range" min="0" max="360" step="1" value="0" aria-label="גוון"><input class="hex" maxlength="7" spellcheck="false" autocomplete="off" aria-label="קוד צבע"></div><button type="button" class="btn cpclose">סגור</button></div>';
   document.body.appendChild(ov);
   const svE=ov.querySelector('.sv'),tE=ov.querySelector('.svt'),hE=ov.querySelector('.hue'),xE=ov.querySelector('.hex');
   let [h,sa,v]=rgb2hsv(hex2rgb(start));
@@ -940,7 +940,7 @@ function openColorPop(start,onChange){
       b.addEventListener('click',()=>{[h,sa,v]=rgb2hsv(hex2rgb(c));draw();xE.value=c;last=c;onChange(c);});row.appendChild(b);});
     wrap.append(lb,row);ov.querySelector('.cp').after(wrap);
   }
-  const close=()=>{ov.remove();};ov.querySelector('button').addEventListener('click',close);ov.addEventListener('pointerdown',e=>{if(e.target===ov)close();});
+  const close=()=>{ov.remove();};ov.querySelector('.cpclose').addEventListener('click',close);ov.addEventListener('pointerdown',e=>{if(e.target===ov)close();});
   xE.value=start;draw();
 }
 const dotOf=id=>$('#'+id+' .cpdot');
@@ -1287,7 +1287,8 @@ function end(e){
   if(a.fill){if(e.type==='pointerup'&&!a.moved)doFill(a.x,a.y);return;}
   if(a.shape){
     if(e.type!=='pointerup'||!a.moved){lctx.clearRect(0,0,W,H);live.style.filter='';liveMask(false);return;}
-    const fp=fadePx(cur),m=st.size/2+6+fp*3,bx=[clamp(Math.min(a.x0,a.x)-m-20,0,W),clamp(Math.min(a.y0,a.y)-m-20,0,H),clamp(Math.max(a.x0,a.x)+m+20,0,W),clamp(Math.max(a.y0,a.y)+m+20,0,H)];
+    const fp=fadePx(cur),dd=Math.max(Math.abs(a.x-a.x0),Math.abs(a.y-a.y0)),ex=shp.type==='circle'?[a.x0+(a.x>=a.x0?dd:-dd),a.y0+(a.y>=a.y0?dd:-dd)]:[a.x,a.y], // a circle is a square of the longer side, so it can reach past the dragged corner
+      m=st.size/2+6+fp*3+(shp.type==='arrow'?Math.max(14,st.size*4)+dd*.12:0),bx=[clamp(Math.min(a.x0,a.x,ex[0])-m-20,0,W),clamp(Math.min(a.y0,a.y,ex[1])-m-20,0,H),clamp(Math.max(a.x0,a.x,ex[0])+m+20,0,W),clamp(Math.max(a.y0,a.y,ex[1])+m+20,0,H)];
     mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalAlpha=st.opacity;mctx.globalCompositeOperation='source-over';if(fp>.2)blurInto(mctx,live,fp*DPR);else mctx.drawImage(live,0,0);mctx.restore();
     lctx.clearRect(0,0,W,H);live.style.filter='';liveMask(false);commitPatch(bx);return;
   }
@@ -1347,7 +1348,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='73';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='74';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
