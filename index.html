@@ -102,7 +102,9 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 .dot{position:absolute;inset-inline-end:4px;bottom:4px;width:13px;height:13px;border-radius:50%;border:2px solid var(--panel);box-shadow:0 0 0 1px var(--line);background:#14181c}
 .dfold{display:flex;justify-content:center;padding:8px 0 4px;touch-action:manipulation;cursor:pointer}
 .dfold span{width:50%;height:3px;border-radius:2px;background:var(--line);display:block}
-.dfold:hover span,.dfold:focus-visible span{background:var(--accent)}
+.dfold{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.dfold:hover span,.dfold:focus-visible span,.dfold.hold span{background:var(--accent)}
+.dfold.hold span{height:5px}
 .drawer{position:fixed;z-index:15;top:0;bottom:0;inset-inline-start:0;width:min(360px,88vw);overflow-y:auto;overscroll-behavior:contain;
   background:var(--panel);border-inline-end:1px solid var(--line);box-shadow:-8px 0 28px rgba(0,0,0,.28);
   padding:calc(env(safe-area-inset-top, 0px) + 12px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 24px) 16px;
@@ -1075,10 +1077,12 @@ menu.addEventListener('click',()=>{setPanel(false);setLayersPanel(false);setDraw
 $('#dclose').addEventListener('click',()=>setDrawer(false));
 /* a thin bar at the end of every drawer section: double tap folds that section */
 for(const d of document.querySelectorAll('.dsec')){
-  const f=document.createElement('div');f.className='dfold';f.tabIndex=0;f.setAttribute('role','button');f.setAttribute('aria-label','קפל את הקטע (לחיצה כפולה)');f.title='לחיצה כפולה מקפלת את הקטע';f.innerHTML='<span></span>';d.appendChild(f);
-  const fold=()=>{d.open=false;const sm=d.querySelector('summary');if(sm)sm.scrollIntoView({block:'nearest'});};let last=0;
-  f.addEventListener('pointerup',e=>{if(e.pointerType==='mouse')return;const t=e.timeStamp;if(t-last<400){last=0;fold();}else last=t;});
-  f.addEventListener('dblclick',fold);
+  const f=document.createElement('div');f.className='dfold';f.tabIndex=0;f.setAttribute('role','button');f.setAttribute('aria-label','קפל את הקטע (לחיצה ארוכה)');f.title='לחיצה ארוכה מקפלת את הקטע';f.innerHTML='<span></span>';d.appendChild(f);
+  const fold=()=>{d.open=false;const sm=d.querySelector('summary');if(sm)sm.scrollIntoView({block:'nearest'});};let ht=0,hx=0,hy=0;const stop=()=>{clearTimeout(ht);f.classList.remove('hold');};
+  f.addEventListener('pointerdown',e=>{hx=e.clientX;hy=e.clientY;f.classList.add('hold');clearTimeout(ht);ht=setTimeout(()=>{f.classList.remove('hold');fold();},500);}); // half-second press folds the section
+  f.addEventListener('pointermove',e=>{if(Math.hypot(e.clientX-hx,e.clientY-hy)>12)stop();});
+  for(const t of ['pointerup','pointercancel','pointerleave'])f.addEventListener(t,stop);
+  f.addEventListener('contextmenu',e=>e.preventDefault());
   f.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fold();}});
 }
 addEventListener('keydown',e=>{if(e.key==='Escape'){setDrawer(false);exitFrame();}});
@@ -1377,7 +1381,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='79';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='80';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
