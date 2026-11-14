@@ -100,8 +100,8 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
   display:flex;gap:6px;padding:6px;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.2)}
 .fab .btn{position:relative}
 .dot{position:absolute;inset-inline-end:4px;bottom:4px;width:13px;height:13px;border-radius:50%;border:2px solid var(--panel);box-shadow:0 0 0 1px var(--line);background:#14181c}
-.dfold{display:flex;justify-content:center;padding:14px 0 18px;touch-action:manipulation;cursor:pointer}
-.dfold span{width:60%;height:6px;border-radius:3px;background:var(--line);display:block}
+.dfold{display:flex;justify-content:center;padding:8px 0 4px;touch-action:manipulation;cursor:pointer}
+.dfold span{width:50%;height:3px;border-radius:2px;background:var(--line);display:block}
 .dfold:hover span,.dfold:focus-visible span{background:var(--accent)}
 .drawer{position:fixed;z-index:15;top:0;bottom:0;inset-inline-start:0;width:min(360px,88vw);overflow-y:auto;overscroll-behavior:contain;
   background:var(--panel);border-inline-end:1px solid var(--line);box-shadow:-8px 0 28px rgba(0,0,0,.28);
@@ -404,7 +404,6 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
       </div>
     </details>
     <p class="ver" id="ver"></p>
-    <div class="dfold" id="dfold" role="button" tabindex="0" aria-label="קפל את התפריט (לחיצה כפולה)" title="לחיצה כפולה מקפלת את התפריט"><span></span></div>
   </aside>
 
   <div class="sheet" id="hp" hidden>
@@ -1074,10 +1073,14 @@ const drawer=$('#drawer'),menu=$('#menu');let drawerOpen=false;
 function setDrawer(o){if(o&&typeof warmProj==='function')warmProj();drawerOpen=o;drawer.classList.toggle('open',o);menu.setAttribute('aria-expanded',o?'true':'false');drawer.inert=!o;updateCloneUI();}
 menu.addEventListener('click',()=>{setPanel(false);setLayersPanel(false);setDrawer(!drawerOpen);});
 $('#dclose').addEventListener('click',()=>setDrawer(false));
-{const f=$('#dfold');let last=0;
- f.addEventListener('pointerup',e=>{if(e.pointerType==='mouse')return;const t=e.timeStamp;if(t-last<400){last=0;setDrawer(false);}else last=t;}); // double tap on touch
- f.addEventListener('dblclick',()=>setDrawer(false));
- f.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setDrawer(false);}});}
+/* a thin bar at the end of every drawer section: double tap folds that section */
+for(const d of document.querySelectorAll('.dsec')){
+  const f=document.createElement('div');f.className='dfold';f.tabIndex=0;f.setAttribute('role','button');f.setAttribute('aria-label','קפל את הקטע (לחיצה כפולה)');f.title='לחיצה כפולה מקפלת את הקטע';f.innerHTML='<span></span>';d.appendChild(f);
+  const fold=()=>{d.open=false;const sm=d.querySelector('summary');if(sm)sm.scrollIntoView({block:'nearest'});};let last=0;
+  f.addEventListener('pointerup',e=>{if(e.pointerType==='mouse')return;const t=e.timeStamp;if(t-last<400){last=0;fold();}else last=t;});
+  f.addEventListener('dblclick',fold);
+  f.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fold();}});
+}
 addEventListener('keydown',e=>{if(e.key==='Escape'){setDrawer(false);exitFrame();}});
 setDrawer(false);
 $('#paper').addEventListener('click',()=>{app.dataset.paper=app.dataset.paper==='light'?'dark':'light';queuePreviews();scheduleSave();});
@@ -1374,7 +1377,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='78';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='79';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
