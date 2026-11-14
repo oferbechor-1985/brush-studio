@@ -130,6 +130,8 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 .card.wide{width:min(520px,100%)}
 .cpbtn{padding:0;width:44px}
 .cpadd{padding:0;width:44px;font-size:22px;line-height:1}
+.clrbtn{padding:0 10px}
+.clrbtn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 .cpdot{width:26px;height:26px;border-radius:50%;background:#14181c;box-shadow:0 0 0 2px var(--panel),0 0 0 3px var(--line)}
 .cp{margin-top:12px;display:flex;flex-direction:column;gap:12px}
 .sv{position:relative;height:170px;border-radius:10px;touch-action:none;cursor:crosshair;border:1px solid var(--line);
@@ -331,7 +333,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
     <details class="dsec" data-k="fx" open><summary>אפקטים וכלים</summary><nav class="brushes" id="brushesFx" aria-label="אפקטים וכלים"></nav></details>
     <details class="dsec" data-k="s1" open><summary>צבע</summary>
       <div class="grp colors" role="group" aria-label="צבע">
-        <button type="button" class="btn cpbtn" id="cpBtn" aria-expanded="false" aria-controls="cp" aria-label="צבע מותאם אישית" title="צבע מותאם אישית"><span class="cpdot" id="cpDot"></span></button><button type="button" class="btn cpadd" id="cpAdd" aria-label="הוסף את הצבע הנוכחי ל׳הצבעים שלי׳" title="הוסף ל׳הצבעים שלי׳">+</button>
+        <button type="button" class="btn cpbtn" id="cpBtn" aria-expanded="false" aria-controls="cp" aria-label="צבע מותאם אישית" title="צבע מותאם אישית"><span class="cpdot" id="cpDot"></span></button><button type="button" class="btn cpadd" id="cpAdd" aria-label="הוסף את הצבע הנוכחי ל׳הצבעים שלי׳" title="הוסף ל׳הצבעים שלי׳">+</button><button type="button" class="btn clrbtn" id="clrBtn" aria-pressed="false" title="צבע שקוף: מוחק במקום לצבוע. פועל במברשות שכבתיות (עט, דיו, טוש, שמן ועוד)">שקוף</button>
         <div class="sw" id="sw"></div>
       </div>
       <div class="mycol" id="mycol">
@@ -873,7 +875,7 @@ function hsl2rgb(h,s,l){const a=s*Math.min(l,1-l),f=n=>{const k=(n+h/30)%12;retu
 function hsv2hex(h,s,v){const f=n=>{const k=(n+h/60)%6;return v-v*s*Math.max(0,Math.min(k,4-k,1));};return '#'+[f(5),f(3),f(1)].map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('');}
 function syncCp(){sv.style.setProperty('--hc',`hsl(${cH},100%,50%)`);svt.style.left=(cS*100)+'%';svt.style.top=((1-cV)*100)+'%';hue.value=Math.round(cH);if(document.activeElement!==hexIn)hexIn.value=st.color;}
 function setColor(hex,fromPicker){
-  Object.assign(st,paint(hex));$('#dot').style.background=hex;$('#cpDot').style.background=hex;
+  Object.assign(st,paint(hex));$('#dot').style.background=hex;$('#cpDot').style.background=st.clear?CHK:hex;
   if(!fromPicker){const [h,s,v]=rgb2hsv(st.rgb);if(s>.001&&v>.001)cH=h;cS=s;cV=v;}
   swEl.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.hex===hex?'true':'false'));mcSw.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.hex===hex?'true':'false'));syncCp();queuePreviews();
 }
@@ -911,6 +913,10 @@ pillBtn.addEventListener('click',()=>{cloneArm=true;updateCloneUI();});
 /* ---------- shapes ---------- */
 const SHAPES=[['line','קו'],['rect','מלבן'],['ellipse','אליפסה'],['circle','עיגול'],['tri','משולש'],['diamond','מעוין'],['star','כוכב'],['arrow','חץ']];
 const shp={type:'rect',stroke:true,fill:false,sc:null,fc:'#ffffff'};
+const CHK='repeating-conic-gradient(#bbb 0 25%,#fff 0 50%) 0 0/10px 10px';
+const clrOn=()=>!!(st.clear&&cur&&cur.layered&&!cur.erase);
+$('#clrBtn').addEventListener('click',()=>{st.clear=!st.clear;syncClr();if(st.clear&&cur&&!cur.layered&&!cur.shape)hint.textContent='צבע שקוף פועל כרגע רק במברשות שכבתיות ובצורות.',hint.hidden=false,setTimeout(hideHint,3500);});
+function syncClr(){$('#clrBtn').setAttribute('aria-pressed',st.clear?'true':'false');$('#cpDot').style.background=st.clear?CHK:st.color;}
 const shbar=$('#shbar');
 SHAPES.forEach(([id,nm])=>{const b=document.createElement('button');b.type='button';b.className='btn shb';b.textContent=nm;b.dataset.s=id;b.setAttribute('aria-pressed',id===shp.type?'true':'false');
   b.addEventListener('click',()=>{shp.type=id;shbar.querySelectorAll('.shb').forEach(x=>x.setAttribute('aria-pressed',x.dataset.s===id?'true':'false'));});$('#shtypes').appendChild(b);});
@@ -920,7 +926,7 @@ $('#shF').addEventListener('click',()=>{shp.fill=!shp.fill;if(!shp.fill&&!shp.st
 /* the same colour picker as the main one (colour square + hue + hex), for any custom colour */
 function openColorPop(start,onChange){
   const ov=document.createElement('div');ov.className='sheet';ov.style.zIndex=30;
-  ov.innerHTML='<div class="card" role="dialog" aria-label="צבע מותאם אישית" style="width:min(340px,100%)"><div class="cp" dir="ltr" style="margin:0"><div class="sv"><div class="svt"></div></div><input class="hue" type="range" min="0" max="360" step="1" value="0" aria-label="גוון"><input class="hex" maxlength="7" spellcheck="false" autocomplete="off" aria-label="קוד צבע"></div><button type="button" class="btn cpclose">סגור</button></div>';
+  ov.innerHTML='<div class="card" role="dialog" aria-label="צבע מותאם אישית" style="width:min(340px,100%)"><div class="cp" dir="ltr" style="margin:0"><div class="sv"><div class="svt"></div></div><input class="hue" type="range" min="0" max="360" step="1" value="0" aria-label="גוון"><input class="hex" maxlength="7" spellcheck="false" autocomplete="off" aria-label="קוד צבע"></div><div class="row" style="margin-top:10px;gap:8px"><button type="button" class="btn cpclr">שקוף</button><button type="button" class="btn cpclose">סגור</button></div></div>';
   document.body.appendChild(ov);
   const svE=ov.querySelector('.sv'),tE=ov.querySelector('.svt'),hE=ov.querySelector('.hue'),xE=ov.querySelector('.hex');
   let [h,sa,v]=rgb2hsv(hex2rgb(start));
@@ -940,12 +946,12 @@ function openColorPop(start,onChange){
       b.addEventListener('click',()=>{[h,sa,v]=rgb2hsv(hex2rgb(c));draw();xE.value=c;last=c;onChange(c);});row.appendChild(b);});
     wrap.append(lb,row);ov.querySelector('.cp').after(wrap);
   }
-  const close=()=>{ov.remove();};ov.querySelector('.cpclose').addEventListener('click',close);ov.addEventListener('pointerdown',e=>{if(e.target===ov)close();});
+  const close=()=>{ov.remove();};ov.querySelector('.cpclr').addEventListener('click',()=>{last='clear';onChange('clear');});ov.querySelector('.cpclose').addEventListener('click',close);ov.addEventListener('pointerdown',e=>{if(e.target===ov)close();});
   xE.value=start;draw();
 }
 const dotOf=id=>$('#'+id+' .cpdot');
-$('#shSc').addEventListener('click',()=>openColorPop(shp.sc||st.color,x=>{shp.sc=x;shp.stroke=true;dotOf('shSc').style.background=x;shSync();}));
-$('#shFc').addEventListener('click',()=>openColorPop(shp.fc,x=>{shp.fc=x;shp.fill=true;dotOf('shFc').style.background=x;shSync();}));
+$('#shSc').addEventListener('click',()=>openColorPop(shp.sc||st.color,x=>{shp.sc=x;shp.stroke=true;dotOf('shSc').style.background=x==='clear'?CHK:x;shSync();}));
+$('#shFc').addEventListener('click',()=>openColorPop(shp.fc,x=>{shp.fc=x;shp.fill=true;dotOf('shFc').style.background=x==='clear'?CHK:x;shSync();}));
 function updateShapeUI(canShow,pillShown){shbar.hidden=!(cur.shape&&canShow);if(!shbar.hidden){if(!shp.sc)dotOf('shSc').style.background=st.color;shbar.style.bottom='calc(70px + env(safe-area-inset-bottom, 0px))';shSync();}}
 function shpPath(c,t,x0,y0,x1,y1,lw){
   let x=Math.min(x0,x1),y=Math.min(y0,y1),w=Math.abs(x1-x0),h=Math.abs(y1-y0);
@@ -964,9 +970,16 @@ function shpPath(c,t,x0,y0,x1,y1,lw){
 function drawShape(c,a){
   const line=shp.type==='line'||shp.type==='arrow',lw=st.size;
   c.save();c.lineJoin='round';c.lineCap='round';c.lineWidth=lw;shpPath(c,shp.type,a.x0,a.y0,a.x,a.y,lw);
-  if(shp.fill&&!line){c.fillStyle=shp.fc;c.fill();}
-  if(shp.stroke||line){c.strokeStyle=shp.sc||st.color;c.stroke();}
+  const fc=shp.fc==='clear',sc=shp.sc==='clear';
+  if(shp.fill&&!line){c.fillStyle=fc?'rgba(128,128,128,.35)':shp.fc;c.fill();} // a clear part shows as grey while drawing and erases when finished
+  if(shp.stroke||line){c.strokeStyle=sc?'rgba(128,128,128,.5)':(shp.sc||st.color);c.stroke();}
   c.restore();
+}
+/* clear fill / clear line of a shape: erases what is under it */
+function eraseShape(c,a,part){
+  const line=shp.type==='line'||shp.type==='arrow';
+  c.save();c.setTransform(DPR,0,0,DPR,0,0);c.lineJoin='round';c.lineCap='round';c.lineWidth=st.size;c.globalCompositeOperation='destination-out';c.globalAlpha=st.opacity;
+  shpPath(c,shp.type,a.x0,a.y0,a.x,a.y,st.size);if(part==='fill')c.fill();else c.stroke();c.restore();
 }
 function shapePreview(a){lctx.clearRect(0,0,W,H);drawShape(lctx,a);live.style.opacity=st.opacity*active.opacity;live.style.filter=fadePx(cur)>.2?`blur(${fadePx(cur)}px)`:'';liveMask(true);}
 /* blur that keeps the colour right up to the page edge: the edge pixels are repeated outward before blurring */
@@ -1219,8 +1232,9 @@ stage.addEventListener('pointerdown',e=>{
     moveMark(x+cloneOff[0],y+cloneOff[1]);
   }
   let target=mctx;
-  if(b.layered){lctx.clearRect(0,0,W,H);live.style.opacity=b.erase?0:st.opacity*(b.alpha||1)*active.opacity;live.style.filter=(!b.erase&&fadePx(b)>.2)?`blur(${fadePx(b)}px)`:'';liveMask(true);target=lctx;}
-  act={id:e.pointerId,type:e.pointerType,b,x,y,t:e.timeStamp,v:0,sim:.55,pr:.55,stroke:new Stroke(b,target,{...st,off:cloneOff})};
+  const clr=clrOn();
+  if(b.layered){lctx.clearRect(0,0,W,H);live.style.opacity=b.erase?0:st.opacity*(b.alpha||1)*active.opacity*(clr?.5:1);live.style.filter=(!b.erase&&fadePx(b)>.2)?`blur(${fadePx(b)}px)`:'';liveMask(true);target=lctx;}
+  act={id:e.pointerId,type:e.pointerType,b,x,y,clr,t:e.timeStamp,v:0,sim:.55,pr:.55,stroke:new Stroke(b,target,{...st,off:cloneOff})};
   act.pr=pressure(e,act);act.stroke.add(x,y,act.pr);
 });
 stage.addEventListener('pointermove',e=>{
@@ -1289,14 +1303,17 @@ function end(e){
     if(e.type!=='pointerup'||!a.moved){lctx.clearRect(0,0,W,H);live.style.filter='';liveMask(false);return;}
     const fp=fadePx(cur),dd=Math.max(Math.abs(a.x-a.x0),Math.abs(a.y-a.y0)),ex=shp.type==='circle'?[a.x0+(a.x>=a.x0?dd:-dd),a.y0+(a.y>=a.y0?dd:-dd)]:[a.x,a.y], // a circle is a square of the longer side, so it can reach past the dragged corner
       m=st.size/2+6+fp*3+(shp.type==='arrow'?Math.max(14,st.size*4)+dd*.12:0),bx=[clamp(Math.min(a.x0,a.x,ex[0])-m-20,0,W),clamp(Math.min(a.y0,a.y,ex[1])-m-20,0,H),clamp(Math.max(a.x0,a.x,ex[0])+m+20,0,W),clamp(Math.max(a.y0,a.y,ex[1])+m+20,0,H)];
+    const lineS=shp.type==='line'||shp.type==='arrow';
+    if(shp.fill&&!lineS&&shp.fc==='clear')eraseShape(mctx,a,'fill');
     mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalAlpha=st.opacity;mctx.globalCompositeOperation='source-over';if(fp>.2)blurInto(mctx,live,fp*DPR);else mctx.drawImage(live,0,0);mctx.restore();
+    if((shp.stroke||lineS)&&shp.sc==='clear')eraseShape(mctx,a,'stroke');
     lctx.clearRect(0,0,W,H);live.style.filter='';liveMask(false);commitPatch(bx);return;
   }
   let box=a.stroke.finish(a.x,a.y,a.pr);
   const fp=fadePx(a.b);if(fp>.2&&box){const m=fp*3;box=[clamp(box[0]-m,0,W),clamp(box[1]-m,0,H),clamp(box[2]+m,0,W),clamp(box[3]+m,0,H)];}
   if(a.b.erase){eraseSync(a.stroke.takeBox());lctx.clearRect(0,0,W,H);liveMask(false);commitPatch(box);return;}
   if(a.b.layered){
-    mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalAlpha=st.opacity*(a.b.alpha||1);mctx.globalCompositeOperation=a.b.cb||'source-over';
+    mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalAlpha=st.opacity*(a.b.alpha||1);mctx.globalCompositeOperation=a.clr?'destination-out':(a.b.cb||'source-over');
     if(a.b.soften)softenLive(box,a.stroke.s.size*(a.b.mul||1));
     if(fp>.2)blurInto(mctx,live,fp*DPR);else mctx.drawImage(live,0,0);
     mctx.restore();lctx.clearRect(0,0,W,H);live.style.filter='';liveMask(false);
@@ -1348,7 +1365,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='74';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='75';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1851,6 +1868,7 @@ const HELP=[
  {t:'למלא אזור בצבע',k:['מילוי','למלא','דלי'],a:['בחרו בכלי "דלי" ב"מברשות" והקישו על האזור שרוצים למלא.']},
  {t:'לשכפל אזור מהציור',k:['משכפל','שכפול','clone','סטמפ','לשכפל מה'],a:['בחרו בכלי "שכפול" ב"אפקטים וכלים".','הקישו על האזור שרוצים להעתיק ממנו, ואז צרו על המקום החדש.']},
  {t:'העבודות שלי (שמירה בתוך האפליקציה)',k:['העבודות שלי','איפה העבודה','לא מוצא','אבדה','נעלמה','שמרתי ולא','רשימת עבודות'],a:['בתפריט ← "דף" ← "העבודות שלי" יש רשימה של העבודות שנשמרו בתוך האפליקציה, עם תצוגה מקדימה.','"שמור את העבודה הנוכחית" שומר עם כל השכבות. "פתח" טוען, "מחק" מוחק.','העבודות נשארות במכשיר הזה בלבד. להעברה למכשיר אחר השתמשו ב"שמור עבודה" או "שתף עבודה".']},
+ {t:'צבע שקוף (מחיקה בצורת מברשת)',k:['שקוף','צבע שקוף','שקיפות צבע','למחוק בצורת','מחק עם מברשת'],a:['בתפריט ← "צבע" לחצו "שקוף". מברשות שכבתיות (עט כדורי, דיו, טוש, מדגיש, קליגרפיה, שמן ועוד) ימחקו במקום לצבוע, בצורת המברשת.','בצורות, לחצו על הצבע של המילוי או של הקו ובחרו "שקוף": האזור יימחק מהציור.','מברשות כמו ספריי ויבשה עדיין לא תומכות בזה.']},
  {t:'שמירה ופתיחה של עבודה',k:['שומר','פותח','שמור','לשמור','שמירה','לפתוח','פתח','פתיחה','להמשיך','קובץ','ייצוא','לייצא','תמונה'],a:['"שמור עבודה" בתפריט ← "דף" שומר קובץ עם כל השכבות, כדי להמשיך מאותה נקודה. "פתח עבודה" טוען אותו.','"שמור" (ליד "רקע") שומר את הציור כתמונה רגילה.','"שתף עבודה" שולח את הקובץ לאפליקציה אחרת, למשל וואטסאפ.']},
  {t:'לייבא עבודה או תמונה',k:['מייבא','ייבוא','לייבא','יבוא','להוסיף תמונה','להכניס','תמונה'],a:['"ייבא עבודה לפרויקט" מוסיף את השכבות של קובץ OBPaint מעל הפרויקט הנוכחי, מהמכשיר או מהתיקייה המשותפת.','"תמונה" בתפריט ← "דף" מוסיפה תמונה רגילה.']},
  {t:'תיקייה משותפת',k:['תיקייה','משותפת','שיתוף','לשתף','להעלות','קבוצה'],a:['"תיקייה משותפת" בתפריט ← "דף". מקלידים קוד גישה ושם, ו"העלה את העבודה הנוכחית" שומר שם את הציור.','"פתח" ליד עבודה טוען אותה, ו"מחק" מוחק עבודה שהעליתם מהמכשיר הזה.']},
