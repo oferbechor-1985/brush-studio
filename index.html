@@ -970,16 +970,10 @@ function shpPath(c,t,x0,y0,x1,y1,lw){
 function drawShape(c,a){
   const line=shp.type==='line'||shp.type==='arrow',lw=st.size;
   c.save();c.lineJoin='round';c.lineCap='round';c.lineWidth=lw;shpPath(c,shp.type,a.x0,a.y0,a.x,a.y,lw);
-  const fc=shp.fc==='clear',sc=shp.sc==='clear';
-  if(shp.fill&&!line){c.fillStyle=fc?'rgba(128,128,128,.35)':shp.fc;c.fill();} // a clear part shows as grey while drawing and erases when finished
-  if(shp.stroke||line){c.strokeStyle=sc?'rgba(128,128,128,.5)':(shp.sc||st.color);c.stroke();}
+  // a clear (שקוף) fill or line is simply not drawn: it never changes any layer
+  if(shp.fill&&!line&&shp.fc!=='clear'){c.fillStyle=shp.fc;c.fill();}
+  if((shp.stroke||line)&&shp.sc!=='clear'){c.strokeStyle=shp.sc||st.color;c.stroke();}
   c.restore();
-}
-/* clear fill / clear line of a shape: erases what is under it */
-function eraseShape(c,a,part){
-  const line=shp.type==='line'||shp.type==='arrow';
-  c.save();c.setTransform(DPR,0,0,DPR,0,0);c.lineJoin='round';c.lineCap='round';c.lineWidth=st.size;c.globalCompositeOperation='destination-out';c.globalAlpha=st.opacity;
-  shpPath(c,shp.type,a.x0,a.y0,a.x,a.y,st.size);if(part==='fill')c.fill();else c.stroke();c.restore();
 }
 function shapePreview(a){lctx.clearRect(0,0,W,H);drawShape(lctx,a);live.style.opacity=st.opacity*active.opacity;live.style.filter=fadePx(cur)>.2?`blur(${fadePx(cur)}px)`:'';liveMask(true);}
 /* blur that keeps the colour right up to the page edge: the edge pixels are repeated outward before blurring */
@@ -1304,9 +1298,8 @@ function end(e){
     const fp=fadePx(cur),dd=Math.max(Math.abs(a.x-a.x0),Math.abs(a.y-a.y0)),ex=shp.type==='circle'?[a.x0+(a.x>=a.x0?dd:-dd),a.y0+(a.y>=a.y0?dd:-dd)]:[a.x,a.y], // a circle is a square of the longer side, so it can reach past the dragged corner
       m=st.size/2+6+fp*3+(shp.type==='arrow'?Math.max(14,st.size*4)+dd*.12:0),bx=[clamp(Math.min(a.x0,a.x,ex[0])-m-20,0,W),clamp(Math.min(a.y0,a.y,ex[1])-m-20,0,H),clamp(Math.max(a.x0,a.x,ex[0])+m+20,0,W),clamp(Math.max(a.y0,a.y,ex[1])+m+20,0,H)];
     const lineS=shp.type==='line'||shp.type==='arrow';
-    if(shp.fill&&!lineS&&shp.fc==='clear')eraseShape(mctx,a,'fill');
     mctx.save();mctx.setTransform(1,0,0,1,0,0);mctx.globalAlpha=st.opacity;mctx.globalCompositeOperation='source-over';if(fp>.2)blurInto(mctx,live,fp*DPR);else mctx.drawImage(live,0,0);mctx.restore();
-    if((shp.stroke||lineS)&&shp.sc==='clear')eraseShape(mctx,a,'stroke');
+    if(!((shp.fill&&!lineS&&shp.fc!=='clear')||((shp.stroke||lineS)&&shp.sc!=='clear'))){lctx.clearRect(0,0,W,H);live.style.filter='';liveMask(false);return;}
     lctx.clearRect(0,0,W,H);live.style.filter='';liveMask(false);commitPatch(bx);return;
   }
   let box=a.stroke.finish(a.x,a.y,a.pr);
@@ -1365,7 +1358,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='75';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='76';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1868,7 +1861,7 @@ const HELP=[
  {t:'למלא אזור בצבע',k:['מילוי','למלא','דלי'],a:['בחרו בכלי "דלי" ב"מברשות" והקישו על האזור שרוצים למלא.']},
  {t:'לשכפל אזור מהציור',k:['משכפל','שכפול','clone','סטמפ','לשכפל מה'],a:['בחרו בכלי "שכפול" ב"אפקטים וכלים".','הקישו על האזור שרוצים להעתיק ממנו, ואז צרו על המקום החדש.']},
  {t:'העבודות שלי (שמירה בתוך האפליקציה)',k:['העבודות שלי','איפה העבודה','לא מוצא','אבדה','נעלמה','שמרתי ולא','רשימת עבודות'],a:['בתפריט ← "דף" ← "העבודות שלי" יש רשימה של העבודות שנשמרו בתוך האפליקציה, עם תצוגה מקדימה.','"שמור את העבודה הנוכחית" שומר עם כל השכבות. "פתח" טוען, "מחק" מוחק.','העבודות נשארות במכשיר הזה בלבד. להעברה למכשיר אחר השתמשו ב"שמור עבודה" או "שתף עבודה".']},
- {t:'צבע שקוף (מחיקה בצורת מברשת)',k:['שקוף','צבע שקוף','שקיפות צבע','למחוק בצורת','מחק עם מברשת'],a:['בתפריט ← "צבע" לחצו "שקוף". מברשות שכבתיות (עט כדורי, דיו, טוש, מדגיש, קליגרפיה, שמן ועוד) ימחקו במקום לצבוע, בצורת המברשת.','בצורות, לחצו על הצבע של המילוי או של הקו ובחרו "שקוף": האזור יימחק מהציור.','מברשות כמו ספריי ויבשה עדיין לא תומכות בזה.']},
+ {t:'צבע שקוף (מחיקה בצורת מברשת)',k:['שקוף','צבע שקוף','שקיפות צבע','למחוק בצורת','מחק עם מברשת'],a:['בתפריט ← "צבע" לחצו "שקוף". מברשות שכבתיות (עט כדורי, דיו, טוש, מדגיש, קליגרפיה, שמן ועוד) ימחקו במקום לצבוע, בצורת המברשת.','בצורות, לחצו על הצבע של המילוי או של הקו ובחרו "שקוף": החלק הזה לא יצויר ולא ישנה שום שכבה.','מברשות כמו ספריי ויבשה עדיין לא תומכות בזה.']},
  {t:'שמירה ופתיחה של עבודה',k:['שומר','פותח','שמור','לשמור','שמירה','לפתוח','פתח','פתיחה','להמשיך','קובץ','ייצוא','לייצא','תמונה'],a:['"שמור עבודה" בתפריט ← "דף" שומר קובץ עם כל השכבות, כדי להמשיך מאותה נקודה. "פתח עבודה" טוען אותו.','"שמור" (ליד "רקע") שומר את הציור כתמונה רגילה.','"שתף עבודה" שולח את הקובץ לאפליקציה אחרת, למשל וואטסאפ.']},
  {t:'לייבא עבודה או תמונה',k:['מייבא','ייבוא','לייבא','יבוא','להוסיף תמונה','להכניס','תמונה'],a:['"ייבא עבודה לפרויקט" מוסיף את השכבות של קובץ OBPaint מעל הפרויקט הנוכחי, מהמכשיר או מהתיקייה המשותפת.','"תמונה" בתפריט ← "דף" מוסיפה תמונה רגילה.']},
  {t:'תיקייה משותפת',k:['תיקייה','משותפת','שיתוף','לשתף','להעלות','קבוצה'],a:['"תיקייה משותפת" בתפריט ← "דף". מקלידים קוד גישה ושם, ו"העלה את העבודה הנוכחית" שומר שם את הציור.','"פתח" ליד עבודה טוען אותה, ו"מחק" מוחק עבודה שהעליתם מהמכשיר הזה.']},
