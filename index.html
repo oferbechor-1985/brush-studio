@@ -136,6 +136,8 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
 .cpbtn{padding:0;width:44px}
 .cpadd{padding:0;width:44px;font-size:22px;line-height:1}
 .clrbtn{padding:0 10px}
+.cbbox{display:flex;flex-direction:column;gap:8px}
+.cbbox input[type=text],.cbbox input[type=url],.cbbox input[type=password]{width:100%;box-sizing:border-box}
 .clrbtn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 .cpdot{width:26px;height:26px;border-radius:50%;background:#14181c;box-shadow:0 0 0 2px var(--panel),0 0 0 3px var(--line)}
 .cp{margin-top:12px;display:flex;flex-direction:column;gap:12px}
@@ -385,6 +387,17 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
     <details class="dsec" data-k="fb" id="fbSec" hidden open><summary>משוב</summary>
       <div class="actions"><button class="btn" id="fbOpen">משוב ורעיונות</button></div>
     </details>
+    <details class="dsec" data-k="cb" open><summary>דף צביעה</summary>
+      <div class="cbbox">
+        <input type="text" id="cbText" maxlength="200" placeholder="מה לצייר? למשל: דינוזאור עם כובע יום הולדת" aria-label="מה לצייר">
+        <div class="row"><select id="cbDetail" aria-label="רמת פירוט"><option value="1">פשוט מאוד (קטנים)</option><option value="2" selected>פשוט (ילדים)</option><option value="3">מפורט (נוער)</option></select><button type="button" class="btn" id="cbGo">צור</button></div>
+        <p class="shnote" id="cbMsg"></p>
+        <details class="dsub" id="cbConn"><summary>חיבור לשרת</summary>
+          <input type="url" id="cbUrl" placeholder="כתובת השרת (workers.dev)" dir="ltr" aria-label="כתובת השרת">
+          <input type="password" id="cbCode" placeholder="קוד גישה" dir="ltr" autocomplete="off" aria-label="קוד גישה">
+        </details>
+      </div>
+    </details>
     <details class="dsec" data-k="s4" open><summary>דף</summary>
       <div class="actions" role="group" aria-label="דף">
         <button class="btn" id="paper" title="רקע בהיר / כהה"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor"/></svg>רקע</button>
@@ -451,6 +464,13 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
     </div>
   </div>
   <div class="sheet" id="svd" hidden><div class="card" role="dialog" aria-label="העבודה נשמרה"><p><strong>העבודה נשמרה</strong></p><p id="svdMsg"></p><div class="row"><button class="btn" id="svdOk">אישור</button><button class="btn" id="svdOpen">העבודות שלי</button></div></div></div>
+  <div class="sheet" id="cbSheet" hidden><div class="card" role="dialog" aria-label="דף צביעה" style="width:min(440px,100%);max-height:90vh;overflow:auto">
+    <p><strong>דף הצביעה שלך</strong></p>
+    <img id="cbImg" alt="תצוגה מקדימה של דף הצביעה" style="width:100%;border-radius:8px;background:#fff;border:1px solid var(--line)">
+    <label class="shnote" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="cbClean" checked>נקה לשחור-לבן עם רקע שקוף</label>
+    <p class="shnote" id="cbLeft"></p>
+    <div class="row"><button class="btn" id="cbAdd">הוסף לציור</button><button class="btn" id="cbRetry">נסה שוב</button><button class="btn" id="cbCancel">בטל</button></div>
+  </div></div>
   <div class="sheet" id="wk" hidden>
     <div class="card" role="dialog" aria-label="העבודות שלי" style="width:min(420px,100%);max-height:86vh;overflow:auto">
       <p><strong>העבודות שלי</strong></p>
@@ -1381,7 +1401,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='80';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='81';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -1885,6 +1905,7 @@ const HELP=[
  {t:'לשכפל אזור מהציור',k:['משכפל','שכפול','clone','סטמפ','לשכפל מה'],a:['בחרו בכלי "שכפול" ב"אפקטים וכלים".','הקישו על האזור שרוצים להעתיק ממנו, ואז צרו על המקום החדש.']},
  {t:'העבודות שלי (שמירה בתוך האפליקציה)',k:['העבודות שלי','איפה העבודה','לא מוצא','אבדה','נעלמה','שמרתי ולא','רשימת עבודות'],a:['בתפריט ← "דף" ← "העבודות שלי" יש רשימה של העבודות שנשמרו בתוך האפליקציה, עם תצוגה מקדימה.','"שמור את העבודה הנוכחית" שומר עם כל השכבות. "פתח" טוען, "מחק" מוחק.','העבודות נשארות במכשיר הזה בלבד. להעברה למכשיר אחר השתמשו ב"שמור עבודה" או "שתף עבודה".']},
  {t:'דגימת צבע מהציור בלחיצה ארוכה',k:['לדגום צבע','בחירת צבע מהציור','טפטפת','לחיצה ארוכה','להעתיק צבע'],a:['לחיצה ארוכה של שתי שניות על נקודה בציור, בלי להזיז את האצבע, הופכת את הצבע שמתחתיה לצבע הנוכחי.','הנקודה שצוירה בזמן הלחיצה מתבטלת. אפשר גם להשתמש במברשת "טפטפת".']},
+ {t:'יצירת דף צביעה',k:['דף צביעה','דפי צביעה','ליצור ציור','לצייר בשבילי','צביעה לילדים'],a:['בתפריט, בקטע "דף צביעה", כתבו מה לצייר ולחצו "צור". אחרי כמה שניות תופיע תצוגה מקדימה.','"הוסף לציור" יוצר שכבה לצביעה ומעליה שכבת קווים נעולה. "נסה שוב" יוצר גרסה אחרת.','בפעם הראשונה צריך למלא כתובת וקוד בקטע "חיבור לשרת".']},
  {t:'צבע שקוף (מחיקה בצורת מברשת)',k:['שקוף','צבע שקוף','שקיפות צבע','למחוק בצורת','מחק עם מברשת'],a:['בתפריט ← "צבע" לחצו "שקוף". מברשות שכבתיות (עט כדורי, דיו, טוש, מדגיש, קליגרפיה, שמן ועוד) ימחקו במקום לצבוע, בצורת המברשת.','בצורות, לחצו על הצבע של המילוי או של הקו ובחרו "שקוף": החלק הזה לא יצויר ולא ישנה שום שכבה.','מברשות כמו ספריי ויבשה עדיין לא תומכות בזה.']},
  {t:'שמירה ופתיחה של עבודה',k:['שומר','פותח','שמור','לשמור','שמירה','לפתוח','פתח','פתיחה','להמשיך','קובץ','ייצוא','לייצא','תמונה'],a:['"שמור עבודה" בתפריט ← "דף" שומר קובץ עם כל השכבות, כדי להמשיך מאותה נקודה. "פתח עבודה" טוען אותו.','"שמור" (ליד "רקע") שומר את הציור כתמונה רגילה.','"שתף עבודה" שולח את הקובץ לאפליקציה אחרת, למשל וואטסאפ.']},
  {t:'לייבא עבודה או תמונה',k:['מייבא','ייבוא','לייבא','יבוא','להוסיף תמונה','להכניס','תמונה'],a:['"ייבא עבודה לפרויקט" מוסיף את השכבות של קובץ OBPaint מעל הפרויקט הנוכחי, מהמכשיר או מהתיקייה המשותפת.','"תמונה" בתפריט ← "דף" מוסיפה תמונה רגילה.']},
@@ -2368,6 +2389,47 @@ $('#wkSave').addEventListener('click',async()=>{
   const name=await askName('','שם העבודה');if(name===null)return;
   try{if(!await wkStore(name,true))return;setDirty(false);await wkRefresh();wkSay('נשמר: '+name);}
   catch(_){wkSay('השמירה לא הצליחה. ייתכן שנגמר המקום במכשיר.');}
+});
+/* ---------- coloring pages: request -> Cloudflare worker (free Workers AI) -> line drawing as a locked layer ---------- */
+const cbSheet=$('#cbSheet'),cbMsg=$('#cbMsg');
+const cbLs=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k)||'';localStorage.setItem(k,v);}catch(_){return '';}};
+$('#cbUrl').value=cbLs('cbUrl');$('#cbCode').value=cbLs('cbCode');
+$('#cbUrl').addEventListener('change',e=>cbLs('cbUrl',e.target.value.trim().replace(/\/+$/,'')));
+$('#cbCode').addEventListener('change',e=>cbLs('cbCode',e.target.value.trim()));
+let cbBusy=false,cbData=null;
+async function cbMake(){
+  if(cbBusy)return;const text=$('#cbText').value.trim();
+  const url=$('#cbUrl').value.trim().replace(/\/+$/,''),code=$('#cbCode').value.trim();
+  if(text.length<2){cbMsg.textContent='כתבו מה לצייר.';return;}
+  if(!url||!code){cbMsg.textContent='קודם מלאו כתובת וקוד בקטע "חיבור לשרת".';$('#cbConn').open=true;return;}
+  cbLs('cbUrl',url);cbLs('cbCode',code);cbBusy=true;$('#cbGo').disabled=true;cbMsg.textContent='מכין דף צביעה, כ-10 עד 20 שניות...';
+  try{
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:text,detail:+$('#cbDetail').value,code})});
+    const j=await r.json().catch(()=>null);
+    if(!r.ok||!j||!j.ok){const e=j&&j.error;cbMsg.textContent=e==='code'?'קוד הגישה שגוי.':e==='cap'?'הגעת למכסה היומית. נסו מחר.':e==='setup'?'השרת עדיין לא הוגדר עד הסוף (AI או קוד גישה).':e==='ai'?'היצירה נכשלה. ייתכן שהמכסה החינמית היומית של Cloudflare נגמרה. נסו שוב מאוחר יותר.':'משהו השתבש. נסו שוב.';return;}
+    cbData=j.image;$('#cbImg').src=cbData;$('#cbLeft').textContent=j.left==null?'':'נשארו להיום עוד '+j.left+' יצירות.';cbMsg.textContent='';cbSheet.hidden=false;setDrawer(false);
+  }catch(_){cbMsg.textContent='אין חיבור לשרת. בדקו את הכתובת והחיבור לאינטרנט.';}
+  finally{cbBusy=false;$('#cbGo').disabled=false;}
+}
+$('#cbGo').addEventListener('click',cbMake);
+$('#cbText').addEventListener('keydown',e=>{if(e.key==='Enter')cbMake();});
+$('#cbRetry').addEventListener('click',()=>{cbSheet.hidden=true;cbMake();});
+$('#cbCancel').addEventListener('click',()=>{cbSheet.hidden=true;});
+$('#cbAdd').addEventListener('click',async()=>{
+  try{
+    const bm=await createImageBitmap(await (await fetch(cbData)).blob()),cw=main.width,ch=main.height,k=Math.min(cw/bm.width,ch/bm.height),w=Math.round(bm.width*k),h=Math.round(bm.height*k);
+    const t=document.createElement('canvas');t.width=cw;t.height=ch;const g=t.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,cw,ch);g.imageSmoothingQuality='high';g.drawImage(bm,(cw-w)/2,(ch-h)/2,w,h);
+    if($('#cbClean').checked){ // darkness becomes black ink with alpha, light becomes transparent
+      const im=g.getImageData(0,0,cw,ch),d=im.data;
+      for(let i=0;i<d.length;i+=4){const L=.299*d[i]+.587*d[i+1]+.114*d[i+2],a=L<90?255:L>205?0:Math.round(255*(205-L)/115);d[i]=d[i+1]=d[i+2]=0;d[i+3]=a;}
+      g.putImageData(im,0,0);
+    }
+    const gid=Date.now()+Math.random(),paint=newLayer_();paint.name='צביעה';hist[hi-1].g=gid;
+    const lines=newLayer_();lines.name='דף צביעה';hist[hi-1].g=gid;
+    lines.ctx.save();lines.ctx.setTransform(1,0,0,1,0,0);lines.ctx.drawImage(t,0,0);lines.ctx.restore();lines.locked=true;
+    setActive(paint);renderLayersUI();setDirty(true);scheduleSave();cbSheet.hidden=true;
+    hint.textContent='נוספו שכבת צביעה ושכבת קווים נעולה מעליה.';hint.hidden=false;setTimeout(hideHint,3500);
+  }catch(_){cbMsg.textContent='לא הצלחנו להוסיף את התמונה.';cbSheet.hidden=true;}
 });
 /* ---------- shared folder (Cloudflare worker + KV, access code) ---------- */
 const GALLERY_URL='https://obpaint-gallery.ofer-bechor.workers.dev';
