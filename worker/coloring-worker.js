@@ -47,20 +47,32 @@ export default {
       if (used >= max) return reply({ error: 'cap', left: 0 }, 429, cors);
     }
 
-    // Hebrew (or any non-English) request -> English, FLUX understands English best
+    // Hebrew (or any non-English) request -> English, FLUX understands English best.
+    // Two translators are tried; if both fail we stop, because FLUX would draw something unrelated from Hebrew text.
     let subject = text;
     if (/[^\x00-\x7F]/.test(text)) {
+      const errs = [];
+      let out = '';
+      const clean = v => String(v || '').trim().replace(/^["'`]+|["'`.]+$/g, '').split('\n')[0].trim();
       try {
-        const t = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
-          messages: [
-            { role: 'system', content: 'Translate the user text from Hebrew to English literally and completely. Keep every animal, object, clothing item and action exactly as written (for example the Hebrew word for dinosaur must become "dinosaur"). Output only the English translation, no quotes, no explanations.' },
-            { role: 'user', content: text },
-          ],
-          max_tokens: 60,
-        });
-        const out = String((t && t.response) || '').trim().replace(/^["']|["']$/g, '');
-        if (out && out.length < 200) subject = out;
-      } catch (_) { /* keep the original text */ }
+        const r = await env.AI.run('@cf/meta/m2m100-1.2b', { text, source_lang: 'he', target_lang: 'en' });
+        out = clean(r && (r.translated_text || (r.result && r.result.translated_text)));
+      } catch (e) { errs.push('m2m:' + String((e && e.message) || e).slice(0, 80)); }
+      if (!out || /[^\x00-\x7F]/.test(out)) {
+        out = '';
+        try {
+          const r = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+            messages: [
+              { role: 'system', content: 'Translate the user text from Hebrew to English literally and completely. Keep every animal, object, clothing item and action exactly as written (for example the Hebrew word for dinosaur must become "dinosaur"). Output only the English translation, no quotes, no explanations.' },
+              { role: 'user', content: text },
+            ],
+            max_tokens: 60,
+          });
+          out = clean(r && (typeof r === 'string' ? r : (r.response || (r.result && r.result.response))));
+        } catch (e) { errs.push('llama:' + String((e && e.message) || e).slice(0, 80)); }
+      }
+      if (!out || out.length > 200 || /[\u0590-\u05FF]/.test(out)) return reply({ error: 'tr', msg: errs.join(' | ') || 'empty' }, 502, cors);
+      subject = out;
     }
     const prompt = `${subject}, drawn exactly as described, the main subject is clearly recognizable. Coloring book page, black outlines only on a pure white background, ${DETAIL[detail]}, clean closed line art, no shading, no gray, no fill, no text, no watermark.`;
 
