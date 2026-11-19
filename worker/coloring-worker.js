@@ -17,14 +17,14 @@ const DICT = {
   "ג'ירפה":'giraffe','אריה':'lion','נמר':'tiger','דוב':'bear','קוף':'monkey','זברה':'zebra','היפופוטם':'hippopotamus','היפופוטמים':'hippopotamuses','תנין':'crocodile',
   'דינוזאור':'dinosaur','דינוזאורים':'dinosaurs','דולפין':'dolphin','לוויתן':'whale','כריש':'shark','תמנון':'octopus','פינגווין':'penguin','ינשוף':'owl','ברווז':'duck','תרנגול':'rooster',
   'תרנגולת':'hen','חזיר':'pig','עז':'goat','חמור':'donkey','עכבר':'mouse','סנאי':'squirrel','זאב':'wolf','שועל':'fox','גמל':'camel','קנגורו':'kangaroo','פנדה':'panda','קואלה':'koala',
-  'דרקון':'dragon','נשר':'eagle','תוכי':'parrot','חילזון':'snail','פרפר':'butterfly','חרק':'insect','עכביש':'spider','נמלה':'ant','קיפוד':'hedgehog','ג׳ירפה':'giraffe',
+  'דרקון':'dragon','נשר':'eagle','תוכי':'parrot','חילזון':'snail','חרק':'insect','עכביש':'spider','נמלה':'ant','קיפוד':'hedgehog','ג׳ירפה':'giraffe',
   'בלון':'balloon','בלונים':'balloons','מכונית':'car','אוטובוס':'bus','רכבת':'train','מטוס':'airplane','ספינה':'ship','סירה':'boat','אופניים':'bicycle','טרקטור':'tractor',
   'בית':'house','טירה':'castle','ארמון':'palace','עץ':'tree','עצים':'trees','פרח':'flower','פרחים':'flowers','שמש':'sun','ירח':'moon','כוכב':'star','כוכבים':'stars','ענן':'cloud',
   'גשם':'rain','קשת':'rainbow','הר':'mountain','הרים':'mountains','ים':'sea','מים':'water','נהר':'river','חוף':'beach','יער':'forest','גן':'garden','שדה':'field','לב':'heart',
   'עוגה':'cake','גלידה':'ice cream','תפוח':'apple','בננה':'banana','כובע':'hat','נעל':'shoe','ספר':'book','כדור':'ball','כדורגל':'soccer ball','חללית':'spaceship','רקטה':'rocket',
   'רובוט':'robot','פיה':'fairy','נסיכה':'princess','נסיך':'prince','מלך':'king','מלכה':'queen','פיראט':'pirate','ליצן':'clown','ילד':'boy','ילדה':'girl','ילדים':'children','תינוק':'baby',
   'אמא':'mother','אבא':'father','סבא':'grandfather','סבתא':'grandmother','יום':'day','הולדת':'birthday','חנוכה':'Hanukkah','חנוכיה':'Hanukkah menorah','פורים':'Purim','פסח':'Passover',
-  'סוכה':'sukkah','אסתר':'Queen Esther','נח':'Noah','תיבה':'ark','מדבר':'desert','שלג':'snow','איש':'man','אישה':'woman','פיל':'elephant','בובה':'doll','דובי':'teddy bear',
+  'סוכה':'sukkah','אסתר':'Queen Esther','נח':'Noah','תיבה':'ark','מדבר':'desert','שלג':'snow','איש':'man','אישה':'woman','בובה':'doll','דובי':'teddy bear',
   'עם':'with','על':'on','ליד':'next to','בתוך':'inside','מתחת':'under','מעל':'above','ו':'and','או':'or','של':'of','בים':'in the sea','במים':'in the water',
 };
 const PREFIX = { 'ב':'in', 'ל':'to', 'ה':'', 'ו':'and', 'מ':'from', 'כ':'like', 'ש':'' };
