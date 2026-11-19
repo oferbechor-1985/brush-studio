@@ -468,6 +468,8 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
     <p><strong>דף הצביעה שלך</strong></p>
     <img id="cbImg" alt="תצוגה מקדימה של דף הצביעה" style="width:100%;border-radius:8px;background:#fff;border:1px solid var(--line)">
     <label class="shnote" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="cbClean" checked>נקה לשחור-לבן עם רקע שקוף</label>
+    <label class="shnote" for="cbEn">הבקשה באנגלית. אם התרגום שגוי, תקנו כאן ולחצו "נסה שוב":</label>
+    <input type="text" id="cbEn" dir="ltr" maxlength="200" style="width:100%;box-sizing:border-box" aria-label="הבקשה באנגלית">
     <p class="shnote" id="cbLeft"></p>
     <div class="row"><button class="btn" id="cbAdd">הוסף לציור</button><button class="btn" id="cbRetry">נסה שוב</button><button class="btn" id="cbCancel">בטל</button></div>
   </div></div>
@@ -1401,7 +1403,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='84';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='85';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -2397,23 +2399,23 @@ $('#cbUrl').value=cbLs('cbUrl');$('#cbCode').value=cbLs('cbCode');
 $('#cbUrl').addEventListener('change',e=>cbLs('cbUrl',e.target.value.trim().replace(/\/+$/,'')));
 $('#cbCode').addEventListener('change',e=>cbLs('cbCode',e.target.value.trim()));
 let cbBusy=false,cbData=null;
-async function cbMake(){
+async function cbMake(en){
   if(cbBusy)return;const text=$('#cbText').value.trim();
   const url=$('#cbUrl').value.trim().replace(/\/+$/,''),code=$('#cbCode').value.trim();
   if(text.length<2){cbMsg.textContent='כתבו מה לצייר.';return;}
   if(!url||!code){cbMsg.textContent='קודם מלאו כתובת וקוד בקטע "חיבור לשרת".';$('#cbConn').open=true;return;}
   cbLs('cbUrl',url);cbLs('cbCode',code);cbBusy=true;$('#cbGo').disabled=true;cbMsg.textContent='מכין דף צביעה, כ-10 עד 20 שניות...';
   try{
-    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:text,detail:+$('#cbDetail').value,code})});
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:text,detail:+$('#cbDetail').value,code,en:en||''})});
     const j=await r.json().catch(()=>null);
     if(!r.ok||!j||!j.ok){const e=j&&j.error;cbMsg.textContent=e==='code'?'קוד הגישה שגוי.':e==='cap'?'הגעת למכסה היומית. נסו מחר.':e==='setup'?'השרת עדיין לא הוגדר עד הסוף (AI או קוד גישה).':e==='tr'?'התרגום לאנגלית נכשל, ולכן לא יצרתי תמונה. נסו לכתוב את הבקשה באנגלית.'+(j&&j.msg?' (פרטים: '+j.msg+')':''):e==='ai'?'היצירה נכשלה. ייתכן שהמכסה החינמית היומית של Cloudflare נגמרה. נסו שוב מאוחר יותר.'+(j&&j.msg?' (פרטים: '+j.msg+')':''):'משהו השתבש. נסו שוב.';return;}
-    cbData=j.image;$('#cbImg').src=cbData;$('#cbLeft').textContent=(j.en?'הבקשה כפי שהובנה: '+j.en+'. ':'')+(j.left==null?'':'נשארו להיום עוד '+j.left+' יצירות.');cbMsg.textContent='';cbSheet.hidden=false;setDrawer(false);
+    cbData=j.image;$('#cbImg').src=cbData;$('#cbEn').value=j.en||'';$('#cbLeft').textContent=j.left==null?'':'נשארו להיום עוד '+j.left+' יצירות.';cbMsg.textContent='';cbSheet.hidden=false;setDrawer(false);
   }catch(_){cbMsg.textContent='אין חיבור לשרת. בדקו את הכתובת והחיבור לאינטרנט.';}
   finally{cbBusy=false;$('#cbGo').disabled=false;}
 }
 $('#cbGo').addEventListener('click',cbMake);
 $('#cbText').addEventListener('keydown',e=>{if(e.key==='Enter')cbMake();});
-$('#cbRetry').addEventListener('click',()=>{cbSheet.hidden=true;cbMake();});
+$('#cbRetry').addEventListener('click',()=>{const en=$('#cbEn').value.trim();cbSheet.hidden=true;cbMake(/^[\x20-\x7E]+$/.test(en)?en:'');});
 $('#cbCancel').addEventListener('click',()=>{cbSheet.hidden=true;});
 $('#cbAdd').addEventListener('click',async()=>{
   try{

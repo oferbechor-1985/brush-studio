@@ -35,7 +35,7 @@ export default {
     try { b = await req.json(); } catch (_) { return reply({ error: 'json' }, 400, cors); }
     if (!same(String(b.code || ''), String(env.ACCESS_CODE))) return reply({ error: 'code' }, 401, cors);
     const text = String(b.prompt || '').trim().slice(0, 200);
-    if (text.length < 2) return reply({ error: 'empty' }, 400, cors);
+    if (text.length < 2 && !String(b.en || '').trim()) return reply({ error: 'empty' }, 400, cors);
     const detail = [1, 2, 3].includes(+b.detail) ? +b.detail : 2;
 
     // daily cap (needs the optional KV binding); the day changes at 00:00 UTC like Cloudflare's own allowance
@@ -49,14 +49,17 @@ export default {
 
     // Hebrew (or any non-English) request -> English, FLUX understands English best.
     // Two translators are tried; if both fail we stop, because FLUX would draw something unrelated from Hebrew text.
-    let subject = text;
-    if (/[^\x00-\x7F]/.test(text)) {
+    let subject = text, via = 'none';
+    const en = String(b.en || '').trim().slice(0, 200);
+    if (en && !/[^\x00-\x7F]/.test(en)) { subject = en; via = 'user'; } // English typed or edited by the user: no translation
+    else if (/[^\x00-\x7F]/.test(text)) {
       const errs = [];
       let out = '';
       const clean = v => String(v || '').trim().replace(/^["'`]+|["'`.]+$/g, '').split('\n')[0].trim();
       try {
         const r = await env.AI.run('@cf/meta/m2m100-1.2b', { text, source_lang: 'he', target_lang: 'en' });
         out = clean(r && (r.translated_text || (r.result && r.result.translated_text)));
+        if (out) via = 'm2m';
       } catch (e) { errs.push('m2m:' + String((e && e.message) || e).slice(0, 80)); }
       if (!out || /[^\x00-\x7F]/.test(out)) {
         out = '';
@@ -69,6 +72,7 @@ export default {
             max_tokens: 60,
           });
           out = clean(r && (typeof r === 'string' ? r : (r.response || (r.result && r.result.response))));
+          if (out) via = 'llama';
         } catch (e) { errs.push('llama:' + String((e && e.message) || e).slice(0, 80)); }
       }
       if (!out || out.length > 200 || /[\u0590-\u05FF]/.test(out)) return reply({ error: 'tr', msg: errs.join(' | ') || 'empty' }, 502, cors);
@@ -85,7 +89,7 @@ export default {
     }
     if (!img) return reply({ error: 'ai' }, 502, cors);
     if (env.COUNTER) { used++; await env.COUNTER.put(key, String(used), { expirationTtl: 172800 }); }
-    return reply({ ok: true, image: 'data:image/jpeg;base64,' + img, left: env.COUNTER ? max - used : null, en: subject }, 200, cors);
+    return reply({ ok: true, image: 'data:image/jpeg;base64,' + img, left: env.COUNTER ? max - used : null, en: subject, via }, 200, cors);
   },
 };
 
