@@ -12,6 +12,7 @@
 
 // Common subjects for kids' coloring pages: translated directly (the translation model gets short Hebrew words wrong, e.g. a hippopotamus became "hypocrites").
 const DICT = {
+  'היפופוטם':'hippopotamus','היפופטם':'hippopotamus','היפו':'hippopotamus','היפופוטמים':'hippopotamuses','קרנף':'rhinoceros','שמח':'happy','שמחה':'happy','עצוב':'sad','חמוד':'cute','חמודה':'cute','גדול':'big','קטן':'small','כועס':'angry','ישן':'sleeping','רץ':'running','קופץ':'jumping','רוקד':'dancing','אוכל':'eating','שוחה':'swimming','עף':'flying','משחק':'playing','צוחק':'laughing','מחייך':'smiling',
   'חתול':'cat','חתולים':'cats','חתולה':'cat','כלב':'dog','כלבים':'dogs','גור':'puppy','סוס':'horse','סוסים':'horses','פרה':'cow','כבשה':'sheep','ארנב':'rabbit','ארנבים':'rabbits',
   'דג':'fish','דגים':'fish','ציפור':'bird','ציפורים':'birds','פרפר':'butterfly','פרפרים':'butterflies','דבורה':'bee','נחש':'snake','צב':'turtle','צפרדע':'frog','פיל':'elephant',
   "ג'ירפה":'giraffe','אריה':'lion','נמר':'tiger','דוב':'bear','קוף':'monkey','זברה':'zebra','היפופוטם':'hippopotamus','היפופוטמים':'hippopotamuses','תנין':'crocodile',
@@ -127,11 +128,17 @@ export default {
     const prompt = `${subject}, drawn exactly as described, the main subject is clearly recognizable. Coloring book page, black outlines only on a pure white background, ${DETAIL[detail]}, clean closed line art, no shading, no gray, no fill, no text, no watermark.`;
 
     let img;
+    const gen = async p => { const r = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', { prompt: p, steps: 4 }); return r && r.image; };
     try {
-      const r = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', { prompt, steps: 4 });
-      img = r && r.image;
+      img = await gen(prompt);
     } catch (e) {
-      return reply({ error: 'ai', msg: String((e && e.message) || e).slice(0, 120) }, 502, cors);
+      const m = String((e && e.message) || e);
+      if (/NSFW|8007/i.test(m)) { // the content filter sometimes misfires on harmless text: retry once with an explicit child-friendly wording
+        try { img = await gen('Cute, innocent, family-friendly children cartoon: ' + prompt); }
+        catch (e2) { return reply({ error: 'nsfw', msg: String((e2 && e2.message) || e2).slice(0, 120), en: subject }, 502, cors); }
+      } else {
+        return reply({ error: 'ai', msg: m.slice(0, 120), en: subject }, 502, cors);
+      }
     }
     if (!img) return reply({ error: 'ai' }, 502, cors);
     if (env.COUNTER) { used++; await env.COUNTER.put(key, String(used), { expirationTtl: 172800 }); }

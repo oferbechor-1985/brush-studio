@@ -1403,7 +1403,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='86';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='87';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -2411,7 +2411,7 @@ async function cbMake(en){
   try{
     const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:text,detail:+$('#cbDetail').value,code,en:typeof en==='string'?en:''})});
     const j=await r.json().catch(()=>null);
-    if(!r.ok||!j||!j.ok){const e=j&&j.error;say(e==='code'?'קוד הגישה שגוי.':e==='cap'?'הגעת למכסה היומית. נסו מחר.':e==='setup'?'השרת עדיין לא הוגדר עד הסוף (AI או קוד גישה).':e==='tr'?'התרגום לאנגלית נכשל, ולכן לא יצרתי תמונה. נסו לכתוב את הבקשה באנגלית.'+(j&&j.msg?' (פרטים: '+j.msg+')':''):e==='ai'?'היצירה נכשלה. ייתכן שהמכסה החינמית היומית של Cloudflare נגמרה. נסו שוב מאוחר יותר.'+(j&&j.msg?' (פרטים: '+j.msg+')':''):'משהו השתבש. נסו שוב.');return;}
+    if(!r.ok||!j||!j.ok){const e=j&&j.error;say(e==='code'?'קוד הגישה שגוי.':e==='cap'?'הגעת למכסה היומית. נסו מחר.':e==='setup'?'השרת עדיין לא הוגדר עד הסוף (AI או קוד גישה).':e==='tr'?'התרגום לאנגלית נכשל, ולכן לא יצרתי תמונה. נסו לכתוב את הבקשה באנגלית.'+(j&&j.msg?' (פרטים: '+j.msg+')':''):e==='nsfw'?'מסנן התוכן של Cloudflare חסם את הבקשה בטעות'+(j.en?' (האנגלית שנשלחה: '+j.en+')':'')+'. נסו לנסח את הבקשה אחרת, או לכתוב אותה באנגלית.':e==='ai'?'היצירה נכשלה. ייתכן שהמכסה החינמית היומית של Cloudflare נגמרה, או תקלה זמנית. נסו שוב מאוחר יותר.'+(j&&j.msg?' (פרטים: '+j.msg+')':''):'משהו השתבש. נסו שוב.');return;}
     cbData=j.image;cbSheet.hidden=false;$('#cbImg').src=cbData;$('#cbEn').value=j.en||'';$('#cbLeft').textContent=j.left==null?'':'נשארו להיום עוד '+j.left+' יצירות.';cbMsg.textContent='';setDrawer(false);
   }catch(_){say('אין חיבור לשרת. בדקו את הכתובת והחיבור לאינטרנט.');}
   finally{cbBusy=false;$('#cbGo').disabled=false;for(const id of ['cbAdd','cbRetry'])$('#'+id).disabled=false;}
