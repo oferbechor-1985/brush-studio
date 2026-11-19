@@ -1401,7 +1401,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='81';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='82';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -2407,7 +2407,7 @@ async function cbMake(){
     const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:text,detail:+$('#cbDetail').value,code})});
     const j=await r.json().catch(()=>null);
     if(!r.ok||!j||!j.ok){const e=j&&j.error;cbMsg.textContent=e==='code'?'קוד הגישה שגוי.':e==='cap'?'הגעת למכסה היומית. נסו מחר.':e==='setup'?'השרת עדיין לא הוגדר עד הסוף (AI או קוד גישה).':e==='ai'?'היצירה נכשלה. ייתכן שהמכסה החינמית היומית של Cloudflare נגמרה. נסו שוב מאוחר יותר.':'משהו השתבש. נסו שוב.';return;}
-    cbData=j.image;$('#cbImg').src=cbData;$('#cbLeft').textContent=j.left==null?'':'נשארו להיום עוד '+j.left+' יצירות.';cbMsg.textContent='';cbSheet.hidden=false;setDrawer(false);
+    cbData=j.image;$('#cbImg').src=cbData;$('#cbLeft').textContent=(j.en?'הבקשה כפי שהובנה: '+j.en+'. ':'')+(j.left==null?'':'נשארו להיום עוד '+j.left+' יצירות.');cbMsg.textContent='';cbSheet.hidden=false;setDrawer(false);
   }catch(_){cbMsg.textContent='אין חיבור לשרת. בדקו את הכתובת והחיבור לאינטרנט.';}
   finally{cbBusy=false;$('#cbGo').disabled=false;}
 }

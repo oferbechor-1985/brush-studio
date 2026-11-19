@@ -53,7 +53,7 @@ export default {
       try {
         const t = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
           messages: [
-            { role: 'system', content: 'Translate the user text to English. Output only the translation, no quotes, no explanations.' },
+            { role: 'system', content: 'Translate the user text from Hebrew to English literally and completely. Keep every animal, object, clothing item and action exactly as written (for example the Hebrew word for dinosaur must become "dinosaur"). Output only the English translation, no quotes, no explanations.' },
             { role: 'user', content: text },
           ],
           max_tokens: 60,
@@ -62,7 +62,7 @@ export default {
         if (out && out.length < 200) subject = out;
       } catch (_) { /* keep the original text */ }
     }
-    const prompt = `coloring book page, ${subject}. Black outlines only on a pure white background, ${DETAIL[detail]}, clean closed line art, no shading, no gray, no fill, no text, no watermark.`;
+    const prompt = `${subject}, drawn exactly as described, the main subject is clearly recognizable. Coloring book page, black outlines only on a pure white background, ${DETAIL[detail]}, clean closed line art, no shading, no gray, no fill, no text, no watermark.`;
 
     let img;
     try {
@@ -73,7 +73,7 @@ export default {
     }
     if (!img) return reply({ error: 'ai' }, 502, cors);
     if (env.COUNTER) { used++; await env.COUNTER.put(key, String(used), { expirationTtl: 172800 }); }
-    return reply({ ok: true, image: 'data:image/jpeg;base64,' + img, left: env.COUNTER ? max - used : null }, 200, cors);
+    return reply({ ok: true, image: 'data:image/jpeg;base64,' + img, left: env.COUNTER ? max - used : null, en: subject }, 200, cors);
   },
 };
 
