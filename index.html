@@ -394,7 +394,7 @@ h2{font:500 12px/1 var(--f-ui);letter-spacing:.06em;color:var(--muted);margin:0 
         <p class="shnote" id="cbMsg"></p>
         <details class="dsub" id="cbConn"><summary>חיבור לשרת</summary>
           <input type="url" id="cbUrl" placeholder="כתובת השרת (workers.dev)" dir="ltr" aria-label="כתובת השרת">
-          <input type="password" id="cbCode" placeholder="קוד גישה" dir="ltr" autocomplete="off" aria-label="קוד גישה">
+          <input type="text" id="cbCode" placeholder="קוד גישה" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" style="-webkit-text-security:disc" aria-label="קוד גישה">
         </details>
       </div>
     </details>
@@ -1403,7 +1403,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='85';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='86';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -2404,18 +2404,21 @@ async function cbMake(en){
   const url=$('#cbUrl').value.trim().replace(/\/+$/,''),code=$('#cbCode').value.trim();
   if(text.length<2){cbMsg.textContent='כתבו מה לצייר.';return;}
   if(!url||!code){cbMsg.textContent='קודם מלאו כתובת וקוד בקטע "חיבור לשרת".';$('#cbConn').open=true;return;}
-  cbLs('cbUrl',url);cbLs('cbCode',code);cbBusy=true;$('#cbGo').disabled=true;cbMsg.textContent='מכין דף צביעה, כ-10 עד 20 שניות...';
+  cbLs('cbUrl',url);cbLs('cbCode',code);cbBusy=true;$('#cbGo').disabled=true;const inSheet=!cbSheet.hidden;
+  const say=t=>{cbMsg.textContent=inSheet?'':t;if(inSheet)$('#cbLeft').textContent=t;};
+  if(inSheet)for(const id of ['cbAdd','cbRetry'])$('#'+id).disabled=true;
+  say('מכין דף צביעה, כ-10 עד 20 שניות...');
   try{
-    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:text,detail:+$('#cbDetail').value,code,en:en||''})});
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:text,detail:+$('#cbDetail').value,code,en:typeof en==='string'?en:''})});
     const j=await r.json().catch(()=>null);
-    if(!r.ok||!j||!j.ok){const e=j&&j.error;cbMsg.textContent=e==='code'?'קוד הגישה שגוי.':e==='cap'?'הגעת למכסה היומית. נסו מחר.':e==='setup'?'השרת עדיין לא הוגדר עד הסוף (AI או קוד גישה).':e==='tr'?'התרגום לאנגלית נכשל, ולכן לא יצרתי תמונה. נסו לכתוב את הבקשה באנגלית.'+(j&&j.msg?' (פרטים: '+j.msg+')':''):e==='ai'?'היצירה נכשלה. ייתכן שהמכסה החינמית היומית של Cloudflare נגמרה. נסו שוב מאוחר יותר.'+(j&&j.msg?' (פרטים: '+j.msg+')':''):'משהו השתבש. נסו שוב.';return;}
-    cbData=j.image;$('#cbImg').src=cbData;$('#cbEn').value=j.en||'';$('#cbLeft').textContent=j.left==null?'':'נשארו להיום עוד '+j.left+' יצירות.';cbMsg.textContent='';cbSheet.hidden=false;setDrawer(false);
-  }catch(_){cbMsg.textContent='אין חיבור לשרת. בדקו את הכתובת והחיבור לאינטרנט.';}
-  finally{cbBusy=false;$('#cbGo').disabled=false;}
+    if(!r.ok||!j||!j.ok){const e=j&&j.error;say(e==='code'?'קוד הגישה שגוי.':e==='cap'?'הגעת למכסה היומית. נסו מחר.':e==='setup'?'השרת עדיין לא הוגדר עד הסוף (AI או קוד גישה).':e==='tr'?'התרגום לאנגלית נכשל, ולכן לא יצרתי תמונה. נסו לכתוב את הבקשה באנגלית.'+(j&&j.msg?' (פרטים: '+j.msg+')':''):e==='ai'?'היצירה נכשלה. ייתכן שהמכסה החינמית היומית של Cloudflare נגמרה. נסו שוב מאוחר יותר.'+(j&&j.msg?' (פרטים: '+j.msg+')':''):'משהו השתבש. נסו שוב.');return;}
+    cbData=j.image;cbSheet.hidden=false;$('#cbImg').src=cbData;$('#cbEn').value=j.en||'';$('#cbLeft').textContent=j.left==null?'':'נשארו להיום עוד '+j.left+' יצירות.';cbMsg.textContent='';setDrawer(false);
+  }catch(_){say('אין חיבור לשרת. בדקו את הכתובת והחיבור לאינטרנט.');}
+  finally{cbBusy=false;$('#cbGo').disabled=false;for(const id of ['cbAdd','cbRetry'])$('#'+id).disabled=false;}
 }
-$('#cbGo').addEventListener('click',cbMake);
+$('#cbGo').addEventListener('click',()=>cbMake());
 $('#cbText').addEventListener('keydown',e=>{if(e.key==='Enter')cbMake();});
-$('#cbRetry').addEventListener('click',()=>{const en=$('#cbEn').value.trim();cbSheet.hidden=true;cbMake(/^[\x20-\x7E]+$/.test(en)?en:'');});
+$('#cbRetry').addEventListener('click',()=>{const en=$('#cbEn').value.trim();cbMake(/^[\x20-\x7E]+$/.test(en)?en:'');});
 $('#cbCancel').addEventListener('click',()=>{cbSheet.hidden=true;});
 $('#cbAdd').addEventListener('click',async()=>{
   try{
