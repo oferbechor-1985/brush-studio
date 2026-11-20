@@ -1403,7 +1403,7 @@ $('#copy').addEventListener('click',async()=>{
 });
 
 /* ---------- view: zoom, pan, rotate ---------- */
-const APP_VERSION='87';$('#ver').textContent='גרסה '+APP_VERSION;
+const APP_VERSION='88';$('#ver').textContent='גרסה '+APP_VERSION;
 const world=$('#world'),vp=$('#vp'),angIn=$('#ang'),zm=$('#zm');
 let vz=1,vx=0,vy=0,va=0,hand=false;
 const MINZ=.2,MAXZ=6,RAD=Math.PI/180,LZ=Math.log(MAXZ/MINZ);
@@ -2429,11 +2429,10 @@ $('#cbAdd').addEventListener('click',async()=>{
       for(let i=0;i<d.length;i+=4){const L=.299*d[i]+.587*d[i+1]+.114*d[i+2],a=L<90?255:L>205?0:Math.round(255*(205-L)/115);d[i]=d[i+1]=d[i+2]=0;d[i+3]=a;}
       g.putImageData(im,0,0);
     }
-    const gid=Date.now()+Math.random(),paint=newLayer_();paint.name='צביעה';hist[hi-1].g=gid;
-    const lines=newLayer_();lines.name='דף צביעה';hist[hi-1].g=gid;
+    const lines=newLayer_();lines.name=($('#cbText').value.trim().split(/\s+/).slice(0,2).join(' ')||'דף צביעה').slice(0,40);
     lines.ctx.save();lines.ctx.setTransform(1,0,0,1,0,0);lines.ctx.drawImage(t,0,0);lines.ctx.restore();lines.locked=true;
-    setActive(paint);renderLayersUI();setDirty(true);scheduleSave();cbSheet.hidden=true;
-    hint.textContent='נוספו שכבת צביעה ושכבת קווים נעולה מעליה.';hint.hidden=false;setTimeout(hideHint,3500);
+    setActive(lines);renderLayersUI();setDirty(true);scheduleSave();cbSheet.hidden=true;
+    hint.textContent='נוספה שכבת דף צביעה נעולה.';hint.hidden=false;setTimeout(hideHint,3500);
   }catch(_){cbMsg.textContent='לא הצלחנו להוסיף את התמונה.';cbSheet.hidden=true;}
 });
 /* ---------- shared folder (Cloudflare worker + KV, access code) ---------- */
